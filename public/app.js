@@ -16,6 +16,7 @@ async function api(method, path, body) {
 
 // ─── Router ───
 const routes = {
+  home: renderHome,
   login: renderLogin,
   signup: renderSignup,
   dashboard: renderDashboard,
@@ -37,13 +38,13 @@ function navigate(page, params = {}) {
 }
 
 async function router() {
-  const hash = window.location.hash.replace('#/', '') || 'login';
+  const hash = window.location.hash.replace('#/', '') || 'home';
   const [page, id] = hash.split('/');
   const app = document.getElementById('app');
   app.innerHTML = '<div class="loading">Loading...</div>';
 
   // Info pages are public
-  const publicPages = ['login', 'signup', 'about', 'contact', 'privacy', 'terms', 'disclaimer'];
+  const publicPages = ['home', 'login', 'signup', 'about', 'contact', 'privacy', 'terms', 'disclaimer'];
 
   // Check auth
   if (!publicPages.includes(page)) {
@@ -66,7 +67,19 @@ async function router() {
 
   const fn = routes[page];
   if (fn) fn(app, id);
-  else navigate('login');
+  else navigate('home');
+
+  // Update nav visibility
+  const navLoginBtn = document.getElementById('navLoginBtn');
+  if (navLoginBtn) {
+    if (currentUser) {
+      navLoginBtn.textContent = 'Dashboard';
+      navLoginBtn.onclick = () => navigate('dashboard');
+    } else {
+      navLoginBtn.textContent = 'Sign In';
+      navLoginBtn.onclick = () => navigate('login');
+    }
+  }
 
   // Inject Ads if enabled
   injectAds();
@@ -74,6 +87,97 @@ async function router() {
 
 window.addEventListener('hashchange', router);
 window.addEventListener('load', router);
+
+// ════════════════════════════════════════════════════════
+//  HOME / LANDING PAGE
+// ════════════════════════════════════════════════════════
+function renderHome(app) {
+  app.innerHTML = `
+  <div class="fade-in">
+    <section class="hero">
+      <h1>Automate Your College Results Portfolio</h1>
+      <p>RAW (Results Automation Website) is the ultimate multi-college platform for students and faculty to scrape, track, and export academic results with 99.9% accuracy.</p>
+      <div class="hero-btns">
+        <button class="btn btn-lg" onclick="navigate('signup')">Get Started Free</button>
+        <button class="btn btn-lg btn-outline" onclick="document.getElementById('how-it-works').scrollIntoView({behavior:'smooth'})">See How it Works</button>
+      </div>
+    </section>
+
+    <section class="features-grid">
+      <div class="feature-card glass">
+        <h3>⚡ Real-time Automation</h3>
+        <p>Bypass the tedious manual entry. RAW automatically navigates portal logins and retrieves marks sheets in seconds.</p>
+      </div>
+      <div class="feature-card glass">
+        <h3>📊 Excel Exports</h3>
+        <p>Generate professionally formatted Excel workbooks with automated CGPA calculation and backlog tracking.</p>
+      </div>
+      <div class="feature-card glass">
+        <h3>🛡 Secure Processing</h3>
+        <p>We prioritize your privacy. Passwords are never stored permanently, and data is processed through secure, encrypted sessions.</p>
+      </div>
+    </section>
+
+    <section id="how-it-works" class="how-it-works">
+      <h2 class="text-center" style="font-size:2rem; margin-bottom:1rem;">How It Works</h2>
+      <p class="text-center" style="color:var(--color-muted); max-width:600px; margin:0 auto 3rem;">Four simple steps to automate your academic data management.</p>
+      
+      <div class="steps-container">
+        <div class="step">
+          <div class="step-num">01</div>
+          <h4>Link Portal</h4>
+          <p style="color:var(--color-muted); font-size:0.9rem;">Choose from our list of supported college portals or add your own custom login selectors.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">02</div>
+          <h4>Input Data</h4>
+          <p style="color:var(--color-muted); font-size:0.9rem;">Paste a list of roll numbers. You can also include student names for better reporting.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">03</div>
+          <h4>Run Scraper</h4>
+          <p style="color:var(--color-muted); font-size:0.9rem;">Watch in real-time as RAW navigates the portal, bypasses captchas, and collects detailed marks.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">04</div>
+          <h4>Export Data</h4>
+          <p style="color:var(--color-muted); font-size:0.9rem;">One-click download of a complete Excel report containing all student results and statistics.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="ad-slot banner"></div>
+
+    <section class="faq-section">
+      <h2 class="text-center" style="font-size:2rem; margin-bottom:3rem;">Frequently Asked Questions</h2>
+      
+      <div class="faq-item">
+        <h4>Is RAW officially affiliated with my university?</h4>
+        <p>No. RAW is an independent automation tool designed to help students and institutions manage their data more efficiently. We are not officially affiliated with JNTU or any other university.</p>
+      </div>
+      
+      <div class="faq-item">
+        <h4>Can I use RAW for any college?</h4>
+        <p>RAW supports any result portal that uses standard web forms. If your college is not listed, you can easily add it by providing the login and marksheet URL selectors in the "Portals" section.</p>
+      </div>
+      
+      <div class="faq-item">
+        <h4>Is my login information safe?</h4>
+        <p>Yes. RAW processes logins in real-time during the scraping session. We do not store student or portal passwords in our database. Your privacy and security are our top priorities.</p>
+      </div>
+
+      <div class="faq-item">
+        <h4>What happens if the portal is slow or down?</h4>
+        <p>RAW includes built-in retry logic and smart-wait features. If a portal is unresponsive, the scraper will pause and retry automatically to ensure no data is missed.</p>
+      </div>
+    </section>
+
+    <div class="text-center" style="padding:4rem 0;">
+      <h3 style="margin-bottom:1.5rem;">Ready to automate your results?</h3>
+      <button class="btn btn-lg" onclick="navigate('signup')">Create Account Now</button>
+    </div>
+  </div>`;
+}
 
 // ════════════════════════════════════════════════════════
 //  LOGIN PAGE

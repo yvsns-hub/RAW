@@ -17,7 +17,7 @@
   --radius: 12px;
   --blur: 12px;
   --transition: 0.25s ease;
-  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-sans: 'Outfit', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
 
@@ -135,18 +135,141 @@ label {
   margin-bottom: 0.2rem;
 }
 
-/* Header */
-header {
-  background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
-  padding: 1rem 2rem;
-  text-align: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+/* Navigation */
+#nav {
+  position: sticky;
+  top: 1rem;
+  margin: 1rem 2rem 2rem;
+  padding: 0.8rem 2rem;
+  z-index: 1000;
+  border-radius: 20px;
+}
+.nav-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.logo {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  cursor: pointer;
+  letter-spacing: -0.5px;
+}
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+.nav-links a {
+  color: var(--color-text);
+  font-weight: 500;
+  font-size: 0.95rem;
+  opacity: 0.8;
+}
+.nav-links a:hover {
+  color: var(--color-primary);
+  opacity: 1;
 }
 
-header h1 {
-  font-size: 1.8rem;
-  color: #fff;
-  font-weight: 700;
+/* Hero Section */
+.hero {
+  text-align: center;
+  padding: 4rem 1rem 6rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+.hero h1 {
+  font-size: 4rem;
+  font-weight: 900;
+  line-height: 1.1;
+  margin-bottom: 1.5rem;
+  background: linear-gradient(to right, #fff, var(--color-primary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.hero p {
+  font-size: 1.25rem;
+  color: var(--color-muted);
+  line-height: 1.6;
+  margin-bottom: 2.5rem;
+}
+.hero-btns {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+/* Features Section */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 2rem;
+  margin-bottom: 4rem;
+}
+.feature-card {
+  text-align: left;
+}
+.feature-card h3 {
+  font-size: 1.3rem;
+  margin-bottom: 0.8rem;
+  color: var(--color-primary);
+}
+.feature-card p {
+  color: var(--color-muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+/* How it Works */
+.how-it-works {
+  padding: 4rem 0;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.steps-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 2rem;
+  margin-top: 3rem;
+}
+.step {
+  position: relative;
+  padding-top: 2rem;
+}
+.step-num {
+  position: absolute;
+  top: 0; left: 0;
+  font-size: 3rem;
+  font-weight: 900;
+  opacity: 0.1;
+  color: var(--color-primary);
+}
+.step h4 {
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+/* FAQ Section */
+.faq-section {
+  padding: 4rem 0;
+  max-width: 800px;
+  margin: 0 auto;
+}
+.faq-item {
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+.faq-item h4 {
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+  color: var(--color-primary-light);
+}
+.faq-item p {
+  color: var(--color-muted);
+  font-size: 0.95rem;
+  line-height: 1.6;
 }
 
 /* Main container removed #app specific margin/padding as it moved to layout */
