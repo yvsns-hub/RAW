@@ -1,0 +1,480 @@
+/* ---------------------------------------------------------------
+   Premium Dark Theme with Glassmorphism & Smooth Animations
+   --------------------------------------------------------------- */
+
+:root {
+  /* Color palette – dark base with vibrant accents */
+  --color-bg: hsl(220, 15%, 10%);
+  --color-surface: hsla(220, 15%, 12%, 0.85);
+  --color-primary: hsl(210, 80%, 55%);
+  --color-primary-dark: hsl(210, 80%, 45%);
+  --color-primary-light: hsl(210, 80%, 65%);
+  --color-success: hsl(140, 70%, 45%);
+  --color-error: hsl(0, 70%, 45%);
+  --color-warning: hsl(40, 80%, 45%);
+  --color-text: hsl(0, 0%, 90%);
+  --color-muted: hsl(0, 0%, 55%);
+  --radius: 12px;
+  --blur: 12px;
+  --transition: 0.25s ease;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  font-family: var(--font-sans);
+  background: var(--color-bg);
+  color: var(--color-text);
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+#app {
+  flex: 1 0 auto;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: var(--transition);
+}
+
+a:hover {
+  color: var(--color-primary-light);
+}
+
+/* Glass container – reusable */
+.glass {
+  background: var(--color-surface);
+  backdrop-filter: blur(var(--blur));
+  border-radius: var(--radius);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 1.5rem;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+  transition: var(--transition);
+}
+
+.glass:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Buttons */
+.btn {
+  display: inline-block;
+  padding: 0.6rem 1.2rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--color-primary);
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: var(--transition);
+  text-align: center;
+}
+
+.btn:hover {
+  background: var(--color-primary-dark);
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn-outline {
+  background: transparent;
+  border: 2px solid var(--color-primary);
+  color: var(--color-primary);
+}
+
+.btn-outline:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+/* Input fields */
+.input {
+  width: 100%;
+  padding: 0.6rem 0.9rem;
+  margin-top: 0.3rem;
+  font-size: 0.95rem;
+  color: var(--color-text);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius);
+  outline: none;
+  transition: var(--transition);
+}
+
+.input:focus {
+  border-color: var(--color-primary);
+  background: rgba(255,255,255,0.08);
+}
+
+/* Form groups */
+.form-group {
+  margin-bottom: 1.2rem;
+}
+
+label {
+  font-weight: 500;
+  color: var(--color-muted);
+  display: block;
+  margin-bottom: 0.2rem;
+}
+
+/* Header */
+header {
+  background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
+  padding: 1rem 2rem;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+
+header h1 {
+  font-size: 1.8rem;
+  color: #fff;
+  font-weight: 700;
+}
+
+/* Main container removed #app specific margin/padding as it moved to layout */
+
+
+/* Card layout for portal list */
+.card {
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  transition: var(--transition);
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+.card h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.2rem;
+  color: var(--color-primary);
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.75rem;
+  border-radius: var(--radius);
+  font-weight: 600;
+}
+
+.badge.success { background: var(--color-success); color: #fff; }
+.badge.error   { background: var(--color-error);   color: #fff; }
+.badge.warning { background: var(--color-warning); color: #fff; }
+/* Connected state for badge */
+.badge.connected {
+  background: var(--color-success);
+  color: #fff;
+}
+
+
+/* Progress bar */
+.progress-bar {
+  width: 100%;
+  height: 0.8rem;
+  background: rgba(255,255,255,0.1);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-top: 0.5rem;
+}
+
+.progress-bar .fill {
+  height: 100%;
+  background: var(--color-primary);
+  width: 0%;
+  transition: width var(--transition);
+}
+
+/* Table styling */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+thead {
+  background: var(--color-primary-dark);
+  color: #fff;
+}
+
+th, td {
+  padding: 0.6rem 0.8rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+tr:hover td {
+  background: rgba(255,255,255,0.04);
+}
+
+/* Responsive tweaks */
+@media (max-width: 600px) {
+  .glass {
+    padding: 1rem;
+  }
+  header h1 {
+    font-size: 1.4rem;
+  }
+  .btn {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: fadeIn 0.4s ease forwards;
+}
+
+/* Scrollbar – subtle */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.05);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.15);
+  border-radius: 4px;
+}
+
+/* Utility classes */
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mb-1 { margin-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 1rem; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+
+/* ── Auth pages ── */
+.auth-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 70vh;
+  padding: 1rem;
+}
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 2.5rem;
+  text-align: center;
+}
+.auth-logo { font-size: 3rem; margin-bottom: 0.5rem; }
+.auth-title { font-size: 1.6rem; font-weight: 700; margin-bottom: 0.3rem; }
+.auth-sub   { color: var(--color-muted); margin-bottom: 1.5rem; }
+.auth-switch { margin-top: 1rem; color: var(--color-muted); font-size: 0.9rem; }
+
+/* ── Messages ── */
+.msg { border-radius: var(--radius); padding: 0.6rem 1rem; margin-bottom: 1rem; font-size: 0.9rem; display: none; }
+.msg:not(:empty)    { display: block; }
+.msg-error   { background: rgba(220,38,38,0.2); color: #fca5a5; border: 1px solid rgba(220,38,38,0.3); }
+.msg-info    { background: rgba(59,130,246,0.2); color: #93c5fd;  border: 1px solid rgba(59,130,246,0.3); }
+.msg-success { background: rgba(34,197,94,0.2);  color: #86efac;  border: 1px solid rgba(34,197,94,0.3); }
+
+/* ── Page header ── */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.page-header h2 { font-size: 1.5rem; margin: 0; }
+
+/* ── Dashboard header ── */
+.dash-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.dash-actions { display: flex; gap: 0.7rem; flex-wrap: wrap; }
+.dash-header h2 { font-size: 1.4rem; margin: 0; }
+
+/* ── Section title ── */
+.section-title { font-size: 1rem; font-weight: 600; color: var(--color-muted); margin: 1.5rem 0 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* ── Stat cards ── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.2rem;
+}
+.stat-icon { font-size: 2rem; }
+.stat-info h3 { font-size: 1.5rem; font-weight: 700; margin: 0; }
+.stat-info p  { color: var(--color-muted); font-size: 0.85rem; margin: 0; }
+
+/* ── Wizard ── */
+.wizard-steps {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+.wizard-step {
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 0.85rem;
+  background: rgba(255,255,255,0.05);
+  color: var(--color-muted);
+  transition: var(--transition);
+}
+.wizard-step.active { background: var(--color-primary); color: #fff; }
+.wizard-step.done   { background: var(--color-success); color: #fff; }
+.wizard-sep { color: var(--color-muted); font-size: 1.2rem; }
+
+/* ── Semester buttons ── */
+.sem-grid { display: flex; flex-wrap: wrap; gap: 0.8rem; }
+.sem-btn {
+  padding: 0.7rem 1.5rem;
+  background: rgba(255,255,255,0.06);
+  border: 2px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.sem-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.sem-btn.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+
+/* ── Semester chips (portal list) ── */
+.sem-chip {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  background: rgba(255,255,255,0.07);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  margin-right: 0.3rem;
+  color: var(--color-muted);
+}
+
+/* ── Review grid ── */
+.review-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.review-item { background: rgba(255,255,255,0.04); padding: 1rem; border-radius: var(--radius); }
+.review-label { font-size: 0.75rem; color: var(--color-muted); text-transform: uppercase; margin-bottom: 0.3rem; }
+.review-value { font-size: 1rem; font-weight: 600; }
+
+/* ── Modal ── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 100;
+}
+.modal-box {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90%; max-width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
+  z-index: 101;
+  padding: 2rem;
+}
+#portalModal { position: fixed; inset: 0; z-index: 99; }
+
+/* ── Full-width btn ── */
+.btn-full { width: 100%; display: block; margin-top: 0.5rem; }
+.btn-lg   { padding: 0.8rem 1.5rem; font-size: 1rem; }
+
+/* ── Loading ── */
+.loading { text-align: center; padding: 3rem; color: var(--color-muted); }
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  .review-grid  { grid-template-columns: 1fr; }
+  .dash-actions { justify-content: flex-end; }
+  .stats-grid   { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── Admin Tabs ── */
+.tab-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-muted);
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: var(--transition);
+  border-bottom: 2px solid transparent;
+}
+.tab-btn:hover { color: var(--color-text); }
+.tab-btn.active { color: var(--color-warning); border-bottom-color: var(--color-warning); }
+
+/* ── Advertisements ── */
+.ad-slot {
+  background: rgba(255,255,255,0.03);
+  border: 1px dashed rgba(255,255,255,0.1);
+  border-radius: var(--radius);
+  margin: 1.5rem 0;
+  min-height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  overflow: hidden;
+  position: relative;
+}
+.ad-slot::before {
+  content: "ADVERTISEMENT";
+  position: absolute;
+  top: 5px; right: 8px;
+  font-size: 0.6rem;
+  opacity: 0.5;
+}
+.ad-slot.sidebar { min-height: 250px; }
+.ad-slot.banner  { min-height: 90px;  width: 100%; }
+
+/* ── Profile Page ── */
+.profile-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; margin-top: 1rem; }
+.profile-sidebar { position: sticky; top: 1rem; }
+.avatar-large { font-size: 5rem; text-align: center; margin-bottom: 1rem; }
+
+/* ── Footer fixing ── */
+footer { flex-shrink: 0; }
+
+
+
