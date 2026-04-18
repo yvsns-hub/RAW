@@ -1,5 +1,5 @@
 const express = require('express');
-const { db, userQueries } = require('../db/database');
+const { client, userQueries } = require('../db/database');
 const { requireAuth } = require('../middleware/auth');
 const bcrypt = require('bcryptjs');
 
@@ -9,23 +9,25 @@ const router = express.Router();
 router.use(requireAuth);
 
 // ─── GET PROFILE STATS ───
-router.get('/profile', (req, res) => {
+router.get('/profile', async (req, res) => {
   try {
     const userId = req.session.userId;
-    const user = userQueries.findById.get(userId);
+    const qUser = userQueries.findById.get(userId);
     
     // Get user stats
-    const totalJobs = db.prepare('SELECT COUNT(*) as count FROM jobs WHERE user_id = ?').get(userId).count;
-    const totalPortals = db.prepare('SELECT COUNT(*) as count FROM portals WHERE user_id = ?').get(userId).count;
-    const totalStudentsScraped = db.prepare('SELECT SUM(completed_students) as count FROM jobs WHERE user_id = ?').get(userId).count || 0;
+    const qJobs = client.execute({ sql: 'SELECT COUNT(*) as count FROM jobs WHERE user_id = ?', args: [userId] });
+    const qPortals = client.execute({ sql: 'SELECT COUNT(*) as count FROM portals WHERE user_id = ?', args: [userId] });
+    const qStudents = client.execute({ sql: 'SELECT SUM(completed_students) as count FROM jobs WHERE user_id = ?', args: [userId] });
+
+    const [user, rsJobs, rsPortals, rsStudents] = await Promise.all([qUser, qJobs, qPortals, qStudents]);
 
     res.json({
       success: true,
-      user,
+      user: user ? { ...user, id: Number(user.id) } : null,
       stats: {
-        totalJobs,
-        totalPortals,
-        totalStudentsScraped
+        totalJobs: Number(rsJobs.rows[0].count),
+        totalPortals: Number(rsPortals.rows[0].count),
+        totalStudentsScraped: Number(rsStudents.rows[0].count || 0)
       }
     });
   } catch (err) {
@@ -49,13 +51,19 @@ router.put('/profile', async (req, res) => {
         return res.status(400).json({ error: 'Password must be at least 4 characters.' });
       }
       const hash = await bcrypt.hash(password, 10);
-      db.prepare('UPDATE users SET username = ?, password_hash = ? WHERE id = ?').run(username.trim(), hash, userId);
+      await client.execute({
+        sql: 'UPDATE users SET username = ?, password_hash = ? WHERE id = ?',
+        args: [username.trim(), hash, userId]
+      });
     } else {
-      db.prepare('UPDATE users SET username = ? WHERE id = ?').run(username.trim(), userId);
+      await client.execute({
+        sql: 'UPDATE users SET username = ? WHERE id = ?',
+        args: [username.trim(), userId]
+      });
     }
 
-    const updatedUser = userQueries.findById.get(userId);
-    res.json({ success: true, user: updatedUser });
+    const updatedUser = await userQueries.findById.get(userId);
+    res.json({ success: true, user: updatedUser ? { ...updatedUser, id: Number(updatedUser.id) } : null });
   } catch (err) {
     console.error('User update error:', err);
     res.status(500).json({ error: 'Server error updating profile.' });

@@ -1,5 +1,5 @@
 const express = require('express');
-const { db, userQueries, jobQueries } = require('../db/database');
+const { client, userQueries } = require('../db/database');
 const { requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
@@ -8,20 +8,22 @@ const router = express.Router();
 router.use(requireAdmin);
 
 // ─── ADMIN STATS ───
-router.get('/stats', (req, res) => {
+router.get('/stats', async (req, res) => {
   try {
-    const totalUsers = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
-    const totalJobs = db.prepare('SELECT COUNT(*) as count FROM jobs').get().count;
-    const totalPortals = db.prepare('SELECT COUNT(*) as count FROM portals').get().count;
-    const totalStudentsScraped = db.prepare('SELECT SUM(completed_students) as count FROM jobs').get().count || 0;
+    const qUsers = client.execute('SELECT COUNT(*) as count FROM users');
+    const qJobs = client.execute('SELECT COUNT(*) as count FROM jobs');
+    const qPortals = client.execute('SELECT COUNT(*) as count FROM portals');
+    const qStudents = client.execute('SELECT SUM(completed_students) as count FROM jobs');
+
+    const [rsUsers, rsJobs, rsPortals, rsStudents] = await Promise.all([qUsers, qJobs, qPortals, qStudents]);
 
     res.json({
       success: true,
       stats: {
-        totalUsers,
-        totalJobs,
-        totalPortals,
-        totalStudentsScraped
+        totalUsers: Number(rsUsers.rows[0].count),
+        totalJobs: Number(rsJobs.rows[0].count),
+        totalPortals: Number(rsPortals.rows[0].count),
+        totalStudentsScraped: Number(rsStudents.rows[0].count || 0)
       }
     });
   } catch (err) {
@@ -31,11 +33,11 @@ router.get('/stats', (req, res) => {
 });
 
 // ─── ADMIN SETTINGS ───
-router.get('/settings', (req, res) => {
+router.get('/settings', async (req, res) => {
   try {
-    const settings = db.prepare('SELECT * FROM settings').all();
+    const rs = await client.execute('SELECT * FROM settings');
     const config = {};
-    settings.forEach(s => config[s.key] = s.value);
+    rs.rows.forEach(s => config[s.key] = s.value);
     res.json({ success: true, settings: config });
   } catch (err) {
     console.error('Admin get settings error:', err);
@@ -43,16 +45,27 @@ router.get('/settings', (req, res) => {
   }
 });
 
-router.post('/settings', (req, res) => {
+router.post('/settings', async (req, res) => {
   try {
     const { adsense_enabled, adsense_script } = req.body;
-    const db = require('../db/database').db;
-    const stmt = db.prepare('INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, datetime("now"))');
+    const batch = [];
     
-    db.transaction(() => {
-      if (adsense_enabled !== undefined) stmt.run('adsense_enabled', String(adsense_enabled));
-      if (adsense_script !== undefined) stmt.run('adsense_script', adsense_script);
-    })();
+    if (adsense_enabled !== undefined) {
+      batch.push({
+        sql: 'INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, datetime("now"))',
+        args: ['adsense_enabled', String(adsense_enabled)]
+      });
+    }
+    if (adsense_script !== undefined) {
+      batch.push({
+        sql: 'INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, datetime("now"))',
+        args: ['adsense_script', adsense_script]
+      });
+    }
+
+    if (batch.length > 0) {
+      await client.batch(batch, "write");
+    }
 
     res.json({ success: true });
   } catch (err) {
@@ -62,10 +75,11 @@ router.post('/settings', (req, res) => {
 });
 
 // ─── LIST ALL USERS ───
-router.get('/users', (req, res) => {
+router.get('/users', async (req, res) => {
   try {
-    const users = userQueries.findAll.all();
-    res.json({ success: true, users });
+    const users = await userQueries.findAll.all();
+    const cleaned = users.map(u => ({ ...u, id: Number(u.id) }));
+    res.json({ success: true, users: cleaned });
   } catch (err) {
     console.error('Admin list users error:', err);
     res.status(500).json({ error: 'Server error fetching users.' });
@@ -73,18 +87,20 @@ router.get('/users', (req, res) => {
 });
 
 // ─── VIEW USER DATA (Portals/Jobs) ───
-router.get('/users/:id/data', (req, res) => {
+router.get('/users/:id/data', async (req, res) => {
   try {
     const userId = req.params.id;
-    const portals = db.prepare('SELECT * FROM portals WHERE user_id = ?').all(userId);
-    const jobs = db.prepare('SELECT * FROM jobs WHERE user_id = ? ORDER BY created_at DESC LIMIT 50').all(userId);
-    const user = userQueries.findById.get(userId);
+    const qPortals = client.execute({ sql: 'SELECT * FROM portals WHERE user_id = ?', args: [userId] });
+    const qJobs = client.execute({ sql: 'SELECT * FROM jobs WHERE user_id = ? ORDER BY created_at DESC LIMIT 50', args: [userId] });
+    const qUser = userQueries.findById.get(userId);
+
+    const [rsPortals, rsJobs, user] = await Promise.all([qPortals, qJobs, qUser]);
 
     res.json({
       success: true,
-      user,
-      portals,
-      jobs
+      user: user ? { ...user, id: Number(user.id) } : null,
+      portals: rsPortals.rows.map(p => ({ ...p, id: Number(p.id), user_id: Number(p.user_id) })),
+      jobs: rsJobs.rows.map(j => ({ ...j, id: Number(j.id), user_id: Number(j.user_id) }))
     });
   } catch (err) {
     console.error('Admin view user data error:', err);
@@ -93,16 +109,23 @@ router.get('/users/:id/data', (req, res) => {
 });
 
 // ─── LIST ALL JOBS ───
-router.get('/jobs', (req, res) => {
+router.get('/jobs', async (req, res) => {
   try {
-    const jobs = db.prepare(`
+    const rs = await client.execute(`
       SELECT j.*, u.username as owner_name, u.email as owner_email
       FROM jobs j
       JOIN users u ON j.user_id = u.id
       ORDER BY j.created_at DESC
       LIMIT 200
-    `).all();
-    res.json({ success: true, jobs });
+    `);
+    const cleaned = rs.rows.map(j => ({
+      ...j,
+      id: Number(j.id),
+      user_id: Number(j.user_id),
+      total_students: Number(j.total_students),
+      completed_students: Number(j.completed_students)
+    }));
+    res.json({ success: true, jobs: cleaned });
   } catch (err) {
     console.error('Admin list jobs error:', err);
     res.status(500).json({ error: 'Server error fetching jobs.' });

@@ -10,7 +10,7 @@ const jobRoutes    = require('./routes/jobs');
 const adminRoutes  = require('./routes/admin');
 const userRoutes   = require('./routes/user');
 const { runScraper } = require('./results/scraper-engine');
-const { jobQueries, portalQueries, userQueries, seedKIETPortal } = require('./db/database');
+const { initDB, client, jobQueries, portalQueries, userQueries, seedKIETPortal } = require('./db/database');
 const bcrypt = require('bcryptjs');
 
 const app    = express();
@@ -86,18 +86,18 @@ io.on('connection', (socket) => {
     }
 
     // Load job from DB — trust job.user_id (job was created via authenticated HTTP)
-    const job = jobQueries.findById.get(jobId);
+    const job = await jobQueries.findById.get(jobId);
     if (!job) {
       socket.emit('job:error', 'Job not found.');
       return;
     }
 
-    const userId = job.user_id;
+    const userId = Number(job.user_id);
     socket.join(`user:${userId}`);
     console.log(`🚀 Starting job ${jobId} for user ${userId}`);
 
     const students = JSON.parse(job.students_input || '[]');
-    const portal = portalQueries.findById.get(job.portal_id, userId);
+    const portal = await portalQueries.findById.get(Number(job.portal_id), userId);
     if (!portal) {
       socket.emit('job:error', 'Portal not found.');
       return;
@@ -107,9 +107,6 @@ io.on('connection', (socket) => {
     const pauseControl = { paused: false };
     activeJobs.set(jobId, { startTime: Date.now(), results: [], logs: [], pauseControl });
 
-    const room = `user:${userId}`;
-
-    // Emit only to this socket (prevents duplicates from room + direct)
     const emitToClient = (event, payload) => {
       socket.emit(event, payload);
     };
@@ -117,7 +114,7 @@ io.on('connection', (socket) => {
     emitToClient('job:started', {
       jobId,
       total: students.length,
-      headless: job.headless === 1,
+      headless: Number(job.headless) === 1,
     });
 
     let passCount = 0, backlogCount = 0, errorCount = 0, mismatchCount = 0;
@@ -136,14 +133,14 @@ io.on('connection', (socket) => {
           }
         },
         students,
-        headless: job.headless === 1,
+        headless: Number(job.headless) === 1,
         pauseControl,
 
         onProgress: (progressData) => {
           emitToClient('job:progress', { jobId, ...progressData });
         },
 
-        onStudentDone: (result, index) => {
+        onStudentDone: async (result, index) => {
           if (result.status === 'SUCCESS' && result.backlogs.length === 0) passCount++;
           else if (result.status === 'SUCCESS' && result.backlogs.length > 0) backlogCount++;
           else if (result.status === 'CREDENTIAL_MISMATCH') mismatchCount++;
@@ -169,7 +166,7 @@ io.on('connection', (socket) => {
           emitToClient('job:student-done', { jobId, ...lite });
 
           // Update DB progress
-          jobQueries.updateProgress.run(
+          await jobQueries.updateProgress.run(
             index + 1, passCount, backlogCount, errorCount, mismatchCount, jobId
           );
         },
@@ -181,8 +178,8 @@ io.on('connection', (socket) => {
           emitToClient('job:log', { jobId, ...logEntry });
         },
 
-        onComplete: (summary) => {
-          jobQueries.complete.run(
+        onComplete: async (summary) => {
+          await jobQueries.complete.run(
             summary.total,
             summary.fullPass,
             summary.backlogs,
@@ -220,10 +217,13 @@ io.on('connection', (socket) => {
       });
     } catch (err) {
       console.error(`❌ Job ${jobId} failed:`, err);
-      jobQueries.fail.run(
-        `${Math.round((Date.now() - activeJobs.get(jobId)?.startTime || 0) / 1000)}s`,
-        jobId
-      );
+      try {
+        const jobState = activeJobs.get(jobId);
+        const elapsed = jobState ? `${Math.round((Date.now() - jobState.startTime) / 1000)}s` : 'Unknown';
+        await jobQueries.fail.run(elapsed, jobId);
+      } catch (dbErr) {
+        console.error('❌ Failed to update job status to FAILED in DB:', dbErr);
+      }
       emitToClient('job:error', { jobId, message: err.message });
       activeJobs.delete(jobId);
     }
@@ -289,36 +289,40 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log('');
-  console.log('╔══════════════════════════════════════════════════╗');
-  console.log('║   🎓 RAW (Results Automation Website)           ║');
-  console.log('╠══════════════════════════════════════════════════╣');
-  console.log(`║   🌐 http://localhost:${PORT}                      ║`);
-  console.log('║   🔐 Login / Signup enabled                     ║');
-  console.log('║   📊 Multi-college portal support               ║');
-  console.log('║   📂 Excel export on completion                 ║');
-  console.log('╚══════════════════════════════════════════════════╝');
-  console.log('');
 
-  // ─── Seed Admin User ───
-  (async () => {
-    try {
-      const adminEmail = 'yvsns7035@gmail.com';
-      const existing = userQueries.findByEmail.get(adminEmail);
-      if (!existing) {
-        const hash = await bcrypt.hash('@Chirutha7035', 10);
-        const result = userQueries.create.run('Admin', adminEmail, hash, 'admin');
-        console.log(`✅ Admin user seeded: ${adminEmail}`);
-        seedKIETPortal(result.lastInsertRowid);
-      } else if (existing.role !== 'admin') {
-        // Ensure existing user has admin role if they were created before
-        const db = require('./db/database').db;
-        db.prepare("UPDATE users SET role = 'admin' WHERE email = ?").run(adminEmail);
-        console.log(`✅ Admin role granted to: ${adminEmail}`);
-      }
-    } catch (err) {
-      console.error('❌ Admin seeding failed:', err);
+// ─── Startup ───
+(async () => {
+  try {
+    // 1. Initialize DB
+    await initDB();
+    console.log('✅ Database initialized');
+
+    // 2. Start Server
+    server.listen(PORT, () => {
+      console.log('');
+      console.log('╔══════════════════════════════════════════════════╗');
+      console.log('║   🎓 RAW (Results Automation Website)           ║');
+      console.log('╠══════════════════════════════════════════════════╣');
+      console.log(`║   🌐 Listening on port ${PORT}                    ║`);
+      console.log('║   📊 Turso Cloud DB (if configured)             ║');
+      console.log('╚══════════════════════════════════════════════════╝');
+      console.log('');
+    });
+
+    // 3. Seed Admin
+    const adminEmail = 'yvsns7035@gmail.com';
+    const existing = await userQueries.findByEmail.get(adminEmail);
+    if (!existing) {
+      const hash = await bcrypt.hash('@Chirutha7035', 10);
+      const result = await userQueries.create.run('Admin', adminEmail, hash, 'admin');
+      console.log(`✅ Admin user seeded: ${adminEmail}`);
+      await seedKIETPortal(Number(result.lastInsertRowid));
+    } else if (existing.role !== 'admin') {
+      await client.execute({ sql: "UPDATE users SET role = 'admin' WHERE email = ?", args: [adminEmail] });
+      console.log(`✅ Admin role granted to: ${adminEmail}`);
     }
-  })();
-});
+  } catch (err) {
+    console.error('❌ Startup failed:', err);
+    process.exit(1);
+  }
+})();

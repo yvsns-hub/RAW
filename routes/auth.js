@@ -17,23 +17,26 @@ router.post('/signup', async (req, res) => {
     }
 
     // Check if email already exists
-    const existing = userQueries.findByEmail.get(email.toLowerCase().trim());
+    const existing = await userQueries.findByEmail.get(email.toLowerCase().trim());
     if (existing) {
       return res.status(400).json({ error: 'Email already registered.' });
     }
 
     const hash = await bcrypt.hash(password, 10);
-    const result = userQueries.create.run(username.trim(), email.toLowerCase().trim(), hash, 'user');
+    const result = await userQueries.create.run(username.trim(), email.toLowerCase().trim(), hash, 'user');
+    
+    // In @libsql/client, the insert ID is BigInt, convert to number
+    const userId = Number(result.lastInsertRowid);
 
     // Seed KIET portal for the new user
-    seedKIETPortal(result.lastInsertRowid);
+    await seedKIETPortal(userId);
 
     // Auto-login after signup
-    req.session.userId = result.lastInsertRowid;
+    req.session.userId = userId;
 
     res.json({
       success: true,
-      user: { id: result.lastInsertRowid, username: username.trim(), email: email.toLowerCase().trim(), role: 'user' }
+      user: { id: userId, username: username.trim(), email: email.toLowerCase().trim(), role: 'user' }
     });
   } catch (err) {
     console.error('Signup error:', err);
@@ -50,7 +53,7 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Email and password are required.' });
     }
 
-    const user = userQueries.findByEmail.get(email.toLowerCase().trim());
+    const user = await userQueries.findByEmail.get(email.toLowerCase().trim());
     if (!user) {
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
@@ -60,11 +63,11 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
 
-    req.session.userId = user.id;
+    req.session.userId = Number(user.id);
 
     res.json({
       success: true,
-      user: { id: user.id, username: user.username, email: user.email, role: user.role }
+      user: { id: Number(user.id), username: user.username, email: user.email, role: user.role }
     });
   } catch (err) {
     console.error('Login error:', err);
@@ -80,14 +83,16 @@ router.post('/logout', (req, res) => {
 });
 
 // ─── GET CURRENT USER ───
-router.get('/me', (req, res) => {
+router.get('/me', async (req, res) => {
   if (!req.session || !req.session.userId) {
     return res.json({ user: null }); // 200 OK with null — no red console errors
   }
-  const user = userQueries.findById.get(req.session.userId);
+  const user = await userQueries.findById.get(req.session.userId);
   if (!user) {
     return res.json({ user: null });
   }
+  // Convert BigInt id to Number if necessary
+  user.id = Number(user.id);
   res.json({ user });
 });
 

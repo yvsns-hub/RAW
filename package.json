@@ -1,11 +1,24 @@
 {
+  "name": "raw-automation",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build": "./render-build.sh"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "dependencies": {
+    "@libsql/client": "^0.14.0",
+    "@sparticuz/chromium-min": "^133.0.0",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.9.0",
     "exceljs": "^4.4.0",
     "express": "^5.2.1",
     "express-session": "^1.19.0",
     "puppeteer": "^24.40.0",
+    "puppeteer-core": "^24.40.0",
     "socket.io": "^4.8.3"
   }
 }
