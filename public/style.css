@@ -1092,28 +1092,31 @@ tr:hover td {
 }
 
 /* ── Modal ── */
-/* #portalModal IS the full-screen overlay — uses flexbox to center the box */
 #portalModal {
   position: fixed;
   inset: 0;
   z-index: 9000;
-  display: none;                       /* shown via JS as flex */
+  display: none;           /* JS sets to 'flex' */
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.78);
+  /* overflow-y: auto allows scrolling when content is tall;
+     margin:auto on child handles vertical centering when short */
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.80);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  /* Pad top so modal isn't hidden behind the fixed navbar (~70px tall) */
-  padding: 80px 1rem 1rem;
+  /* 85px top = navbar + clearance; 5% sides+bottom = visible border gap */
+  padding: 85px 5% 5%;
   box-sizing: border-box;
 }
 
 .modal-box {
-  position: relative;                  /* NOT fixed — centered by parent flex */
+  /* margin:auto centers vertically when container > box height */
+  margin: auto;
+  /* flex-shrink:0 prevents squishing; overflow-y allows internal scroll */
+  flex-shrink: 0;
   width: 100%;
-  max-width: 1060px;
-  /* Limit height to fit inside the padded zone */
-  max-height: calc(100vh - 100px);
+  max-width: 960px;
   overflow-y: auto;
   z-index: 9001;
   padding: 1.25rem 1.75rem;
@@ -1122,6 +1125,7 @@ tr:hover td {
   border: 1px solid rgba(255, 255, 255, 0.15);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
 }
+
 
 /* ── Redesigned Portal UI ── */
 .portal-grid-editor {
