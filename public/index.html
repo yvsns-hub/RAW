@@ -14,12 +14,26 @@
 <body class="slide-up">
   <div class="bg-glow glow-1"></div>
   <div class="bg-glow glow-2"></div>
-  <!-- Splash Screen (Flash Page) -->
+  <!-- Splash Screen — Pure CSS, no image dependency -->
   <div id="intro">
+    <!-- Animated background grid -->
+    <div class="splash-grid"></div>
+
+    <!-- Floating orbs -->
+    <div class="splash-orb splash-orb-1"></div>
+    <div class="splash-orb splash-orb-2"></div>
+    <div class="splash-orb splash-orb-3"></div>
+
+    <!-- Main content -->
     <div class="intro-content">
-      <img src="/assets/logo.png" alt="RAW Logo" class="intro-logo">
-      <div class="intro-title">RAW</div>
-      <div class="intro-tagline">Results Automation Website</div>
+      <!-- CSS text logo — no image -->
+      <div class="splash-logo-wrap">
+        <div class="splash-ring splash-ring-1"></div>
+        <div class="splash-ring splash-ring-2"></div>
+        <div class="splash-logo-text">RAW</div>
+      </div>
+      <div class="intro-title">Results Automation Website</div>
+      <div class="intro-tagline">Automate · Analyse · Export</div>
       <div class="intro-loader"></div>
     </div>
   </div>
