@@ -1103,14 +1103,17 @@ tr:hover td {
   background: rgba(0, 0, 0, 0.78);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  padding: 1rem;
+  /* Pad top so modal isn't hidden behind the fixed navbar (~70px tall) */
+  padding: 80px 1rem 1rem;
+  box-sizing: border-box;
 }
 
 .modal-box {
   position: relative;                  /* NOT fixed — centered by parent flex */
   width: 100%;
   max-width: 1060px;
-  max-height: 82vh;
+  /* Limit height to fit inside the padded zone */
+  max-height: calc(100vh - 100px);
   overflow-y: auto;
   z-index: 9001;
   padding: 1.25rem 1.75rem;
