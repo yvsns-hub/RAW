@@ -22,6 +22,17 @@ const FAIL_GRADES = new Set(['F', 'AB', 'ABSENT', 'W']);
 async function scrapeStudent(browser, student, portalConfig, onLog) {
   const page = await browser.newPage();
   
+  // ── Block unnecessary resources to save RAM and speed up ──
+  await page.setRequestInterception(true);
+  page.on('request', (req) => {
+    const type = req.resourceType();
+    if (['image', 'font', 'media', 'stylesheet'].includes(type)) {
+      req.abort();
+    } else {
+      req.continue();
+    }
+  });
+
   // Set lower navigation timeout for Render's 512MB RAM environment
   page.setDefaultNavigationTimeout(45000);
 
@@ -243,8 +254,17 @@ async function runScraper(options = {}) {
   if (isProd) {
     onLog('🚀 Production Mode: Using @sparticuz/chromium');
     browser = await puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
+      args: [
+        ...chromium.args,
+        '--disable-gpu',
+        '--disable-dev-shm-usage',
+        '--disable-setuid-sandbox',
+        '--no-first-run',
+        '--no-sandbox',
+        '--no-zygote',
+        '--single-process' // Efficient for single-purpose scraping on Render
+      ],
+      defaultViewport: { width: 800, height: 600 },
       executablePath: await chromium.executablePath(),
       headless: chromium.headless,
     });
@@ -252,7 +272,12 @@ async function runScraper(options = {}) {
     onLog('🏠 Local Mode: Using standard Puppeteer');
     browser = await puppeteer.launch({
       headless: headless ? 'new' : false,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+      args: [
+        '--no-sandbox', 
+        '--disable-setuid-sandbox', 
+        '--disable-dev-shm-usage',
+        '--disable-gpu'
+      ],
     });
   }
 

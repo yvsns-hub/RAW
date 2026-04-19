@@ -10,8 +10,30 @@ let currentJobId = null; // tracks the active job for progress page
 async function api(method, path, body) {
   const opts = { method, headers: { 'Content-Type': 'application/json' } };
   if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(path, opts);
-  return res.json();
+  
+  // Detection for Render cold starts
+  const wakeupTimeout = setTimeout(() => {
+    const loadingEl = document.querySelector('.loading');
+    if (loadingEl) {
+      loadingEl.innerHTML = `
+        <div style="text-align:center;">
+          <div class="spinner"></div>
+          <div style="margin-top:1rem;">Waking up server...</div>
+          <p style="font-size:0.8rem;color:var(--color-muted);margin-top:0.5rem;">(This usually takes 30-60 seconds on Render Free tier)</p>
+        </div>
+      `;
+    }
+  }, 1500);
+
+  try {
+    const res = await fetch(path, opts);
+    clearTimeout(wakeupTimeout);
+    return res.json();
+  } catch (err) {
+    clearTimeout(wakeupTimeout);
+    console.error('API Error:', err);
+    return { error: 'Network error or server is down' };
+  }
 }
 
 // ─── Router ───
@@ -86,7 +108,11 @@ async function router() {
 }
 
 window.addEventListener('hashchange', router);
-window.addEventListener('load', router);
+window.addEventListener('load', () => {
+  router();
+  // Early ping to wake up the server (Render free tier)
+  fetch('/api/ping').catch(() => {});
+});
 
 // ════════════════════════════════════════════════════════
 //  HOME / LANDING PAGE

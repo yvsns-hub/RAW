@@ -34,6 +34,10 @@ app.use('/api/jobs', jobRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/user', userRoutes);
 
+// ─── Health & Ping (Keep-alive) ───
+app.get('/api/health', (req, res) => res.status(200).json({ status: 'ok', time: new Date().toISOString() }));
+app.get('/api/ping', (req, res) => res.status(200).send('pong'));
+
 // ─── Static Files ───
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/output', express.static(path.join(__dirname, 'output')));
