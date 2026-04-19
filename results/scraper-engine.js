@@ -253,21 +253,32 @@ async function runScraper(options = {}) {
 
   if (isProd) {
     onLog('🚀 Production Mode: Using @sparticuz/chromium');
-    browser = await puppeteer.launch({
-      args: [
-        ...chromium.args,
-        '--disable-gpu',
-        '--disable-dev-shm-usage',
-        '--disable-setuid-sandbox',
-        '--no-first-run',
-        '--no-sandbox',
-        '--no-zygote',
-        '--single-process' // Efficient for single-purpose scraping on Render
-      ],
-      defaultViewport: { width: 800, height: 600 },
-      executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
-    });
+    try {
+      const executablePath = await chromium.executablePath();
+      onLog(`📍 Chrome path: ${executablePath}`);
+      browser = await puppeteer.launch({
+        args: [
+          ...chromium.args,
+          '--disable-gpu',
+          '--disable-dev-shm-usage',
+          '--disable-setuid-sandbox',
+          '--no-first-run',
+          '--no-sandbox',
+          '--no-zygote',
+          '--single-process',
+          '--disable-extensions',
+          '--mute-audio',
+        ],
+        defaultViewport: { width: 1024, height: 768 },
+        executablePath,
+        headless: chromium.headless,
+        ignoreHTTPSErrors: true,
+      });
+      onLog('✅ Browser launched successfully');
+    } catch (launchErr) {
+      onLog(`❌ Browser launch failed: ${launchErr.message}`);
+      throw launchErr;
+    }
   } else {
     onLog('🏠 Local Mode: Launching browser...');
     // Try to find a local Chrome installation

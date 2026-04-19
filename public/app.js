@@ -11,7 +11,41 @@ function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('raw-theme', theme);
   const icon = document.querySelector('#themeToggle .icon');
-  if (icon) icon.textContent = theme === 'light' ? '🌙' : '☀️';
+  if (icon) icon.textContent = theme === 'light' ? '\uD83C\uDF19' : '\u2600\uFE0F';
+}
+
+// ─── Dynamic Nav Renderer ───
+function updateNav() {
+  const navLinks = document.getElementById('nav-links');
+  if (!navLinks) return;
+  const theme = localStorage.getItem('raw-theme') || 'dark';
+  const themeIcon = theme === 'light' ? '\uD83C\uDF19' : '\u2600\uFE0F';
+  const themeBtn = `<button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle Theme"><span class="icon">${themeIcon}</span></button>`;
+
+  if (currentUser) {
+    // Authenticated nav
+    const adminBtn = currentUser.role === 'admin'
+      ? `<a onclick="navigate('admin')" style="cursor:pointer;color:var(--color-warning);">\uD83D\uDEE1 Admin</a>`
+      : '';
+    navLinks.innerHTML = `
+      <a href="#/home">Home</a>
+      <a href="#/about">About</a>
+      ${adminBtn}
+      <a onclick="navigate('portals')" style="cursor:pointer;">\uD83C\uDFEB Portals</a>
+      ${themeBtn}
+      <button class="btn" onclick="navigate('new-job')">\uD83D\uDE80 New Job</button>
+      <button class="btn btn-outline" onclick="doLogout()">Sign Out</button>
+    `;
+  } else {
+    // Public nav
+    navLinks.innerHTML = `
+      <a href="#/home">Home</a>
+      <a href="#/about">About</a>
+      <a href="#/contact">Contact</a>
+      ${themeBtn}
+      <button class="btn btn-outline" onclick="navigate('login')">Sign In</button>
+    `;
+  }
 }
 
 function toggleTheme() {
@@ -120,17 +154,8 @@ async function router() {
   if (fn) fn(app, id);
   else navigate('home');
 
-  // Update nav visibility
-  const navLoginBtn = document.getElementById('navLoginBtn');
-  if (navLoginBtn) {
-    if (currentUser) {
-      navLoginBtn.textContent = 'Dashboard';
-      navLoginBtn.onclick = () => navigate('dashboard');
-    } else {
-      navLoginBtn.textContent = 'Sign In';
-      navLoginBtn.onclick = () => navigate('login');
-    }
-  }
+  // Update nav dynamically
+  updateNav();
 
   // Inject Ads if enabled
   injectAds();
@@ -324,14 +349,11 @@ async function renderDashboard(app) {
     <div class="dash-header">
       <div>
         <h2>Welcome, ${currentUser.username} 👋</h2>
-        <p style="color:var(--color-muted)">RAW (Results Automation Website)</p>
+        <p style="color:var(--color-muted)">RAW — Results Automation Website</p>
       </div>
       <div class="dash-actions">
-        ${currentUser.role === 'admin' ? `<button class="btn btn-outline" style="border-color:var(--color-warning);color:var(--color-warning)" onclick="navigate('admin')">🛡 Admin</button>` : ''}
-        <button class="btn btn-outline" onclick="navigate('profile')">👤 Profile</button>
-        <button class="btn btn-outline" onclick="navigate('portals')">🏫 Portals</button>
         <button class="btn" onclick="navigate('new-job')">🚀 New Job</button>
-        <button class="btn btn-outline" onclick="doLogout()">Sign Out</button>
+        <button class="btn btn-outline" onclick="navigate('history')">📂 History</button>
       </div>
     </div>
 
