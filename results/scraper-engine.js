@@ -198,33 +198,39 @@ async function scrapeStudent(browser, student, portalConfig, onLog) {
 
 // ─── BUILD EXCEL ───
 async function buildExcel(results) {
-  const wb = new ExcelJS.Workbook();
-  const ws1 = wb.addWorksheet('Summary');
-  ws1.columns = [
-    { header: 'S.No', key: 'sno', width: 6 },
-    { header: 'Roll Number', key: 'rollNo', width: 18 },
-    { header: 'Student Name', key: 'name', width: 40 },
-    { header: 'SGPA', key: 'sgpa', width: 10 },
-    { header: 'Status', key: 'status', width: 12 },
-    { header: 'Backlogs', key: 'bkCount', width: 10 },
-    { header: 'Backlog List', key: 'bkSubs', width: 50 },
-  ];
-  
-  results.forEach((r, i) => {
-    ws1.addRow({
-      sno: i+1, rollNo: r.rollNo, name: r.name,
-      sgpa: r.sgpa, status: r.status,
-      bkCount: r.backlogs ? r.backlogs.length : 0,
-      bkSubs: r.backlogs ? r.backlogs.map(s => s.name).join(', ') : ''
+  try {
+    const wb = new ExcelJS.Workbook();
+    const ws1 = wb.addWorksheet('Summary');
+    ws1.columns = [
+      { header: 'S.No', key: 'sno', width: 6 },
+      { header: 'Roll Number', key: 'rollNo', width: 18 },
+      { header: 'Student Name', key: 'name', width: 40 },
+      { header: 'SGPA', key: 'sgpa', width: 10 },
+      { header: 'Status', key: 'status', width: 12 },
+      { header: 'Backlogs', key: 'bkCount', width: 10 },
+      { header: 'Backlog List', key: 'bkSubs', width: 50 },
+    ];
+    
+    results.forEach((r, i) => {
+      ws1.addRow({
+        sno: i+1, rollNo: r.rollNo, name: r.name,
+        sgpa: r.sgpa, status: r.status,
+        bkCount: r.backlogs ? r.backlogs.length : 0,
+        bkSubs: (r.backlogs && Array.isArray(r.backlogs)) ? r.backlogs.map(s => s.name).join(', ') : ''
+      });
     });
-  });
 
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const outDir = path.join(__dirname, '..', 'output');
-  if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
-  const outPath = path.join(outDir, `Results_${timestamp}.xlsx`);
-  await wb.xlsx.writeFile(outPath);
-  return outPath;
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const outDir = path.join(__dirname, '..', 'output');
+    const fs = require('fs');
+    if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
+    const outPath = path.join(outDir, `Results_${timestamp}.xlsx`);
+    await wb.xlsx.writeFile(outPath);
+    return outPath;
+  } catch (ex) {
+    console.error('❌ Excel Build Error:', ex);
+    return null;
+  }
 }
 
 // ─── MAIN RUNNER ───

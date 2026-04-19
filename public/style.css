@@ -227,14 +227,14 @@ label {
 /* Navigation */
 #nav {
   position: fixed;
-  top: 0.8rem;
+  top: 1rem;
   left: 50%;
   transform: translateX(-50%);
-  margin: 0 auto;
-  padding: 0.6rem 2rem;
+  margin: 0;
+  padding: 0.4rem 1.2rem;
   z-index: 1000;
   border-radius: 50px;
-  max-width: fit-content;
+  max-width: 90vw;
   border: 1px solid var(--color-glass-border);
   box-shadow: var(--shadow);
   background: var(--color-glass-bg);
@@ -243,9 +243,9 @@ label {
 }
 .nav-container {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
-  gap: 3rem;
+  gap: 1.5rem;
 }
 .logo {
   display: flex;
@@ -267,13 +267,13 @@ label {
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 .nav-links a {
   color: var(--color-text);
   text-decoration: none;
   font-weight: 500;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   transition: var(--transition);
   opacity: 0.8;
 }
@@ -284,8 +284,8 @@ label {
   background: var(--color-surface);
   border: 1px solid var(--color-glass-border);
   color: var(--color-text);
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   display: flex;
   align-items: center;
