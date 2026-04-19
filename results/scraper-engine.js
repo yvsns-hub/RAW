@@ -497,6 +497,7 @@ async function runScraper(options = {}) {
       phase: 'running', current: completed, total,
       percentage: Math.round((completed / total) * 90), // cap at 90% until Excel done
       eta: etaStr,
+      currentStudent: { rollNo: student.rollNo, name: student.name || '', index: i },
     });
   }
 

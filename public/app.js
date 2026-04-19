@@ -883,9 +883,10 @@ function renderJobProgress(app, jobId, jobMeta) {
       <h3 style="color:var(--color-success);">✅ Scraping Complete!</h3>
       <div class="stats-grid" style="margin-top:1rem;">
         <div class="stat-card glass"><div class="stat-icon">📋</div><div class="stat-info"><h3 id="sTotal">—</h3><p>Total</p></div></div>
-        <div class="stat-card glass"><div class="stat-icon">✅</div><div class="stat-info"><h3 id="sPass">—</h3><p>Passed</p></div></div>
+        <div class="stat-card glass"><div class="stat-icon">✅</div><div class="stat-info"><h3 id="sPass">—</h3><p>All Clear</p></div></div>
         <div class="stat-card glass"><div class="stat-icon">🔴</div><div class="stat-info"><h3 id="sBlog">—</h3><p>Backlogs</p></div></div>
         <div class="stat-card glass"><div class="stat-icon">❌</div><div class="stat-info"><h3 id="sErr">—</h3><p>Errors</p></div></div>
+        <div class="stat-card glass"><div class="stat-icon">⏱</div><div class="stat-info"><h3 id="sElapsed">—</h3><p>Time Taken</p></div></div>
       </div>
       <div style="margin-top:1rem;display:flex;gap:1rem;">
         <a id="dlBtn" href="#" class="btn" style="display:none;">⬇ Download Excel</a>
@@ -985,7 +986,8 @@ function renderJobProgress(app, jobId, jobMeta) {
     document.getElementById('pPhase').textContent = phases[d.phase] || d.phase;
     document.getElementById('pPct').textContent   = d.percentage + '%';
     document.getElementById('pBar').style.width   = d.percentage + '%';
-    document.getElementById('pETA').textContent   = d.eta || '—';
+    // Only update ETA when explicitly provided — avoids flickering back to '—'
+    if (d.eta !== undefined) document.getElementById('pETA').textContent = d.eta;
     document.getElementById('pDone').textContent  = d.current || 0;
     document.getElementById('pTotal').textContent = d.total || '?';
     if (d.currentStudent) {
@@ -1023,13 +1025,15 @@ function renderJobProgress(app, jobId, jobMeta) {
     document.getElementById('pPhase').textContent = '✅ Complete';
     document.getElementById('pPct').textContent   = '100%';
     document.getElementById('pBar').style.width   = '100%';
-    document.getElementById('pCurrent').textContent = 'Job finished successfully!';
+    document.getElementById('pETA').textContent   = '—';
+    document.getElementById('pCurrent').textContent = 'Scraping complete — all students processed!';
 
     document.getElementById('completeSummary').style.display = 'block';
-    document.getElementById('sTotal').textContent = d.total;
-    document.getElementById('sPass').textContent  = d.fullPass;
-    document.getElementById('sBlog').textContent  = d.backlogs;
-    document.getElementById('sErr').textContent   = d.errors;
+    document.getElementById('sTotal').textContent   = d.total;
+    document.getElementById('sPass').textContent    = d.fullPass;
+    document.getElementById('sBlog').textContent    = d.backlogs;
+    document.getElementById('sErr').textContent     = d.errors;
+    document.getElementById('sElapsed').textContent = d.elapsed || '—';
     if (d.excelFile) {
       const dlBtn = document.getElementById('dlBtn');
       dlBtn.href = `/api/jobs/${jobId}/download`;
