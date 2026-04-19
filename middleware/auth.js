@@ -9,9 +9,9 @@ function requireAuth(req, res, next) {
 }
 
 // Admin middleware — checks if logged in user is an admin
-function requireAdmin(req, res, next) {
+async function requireAdmin(req, res, next) {
   if (req.session && req.session.userId) {
-    const user = userQueries.findById.get(req.session.userId);
+    const user = await userQueries.findById.get(req.session.userId);
     if (user && user.role === 'admin') {
       return next();
     }

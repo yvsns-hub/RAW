@@ -9,6 +9,7 @@ const portalRoutes = require('./routes/portals');
 const jobRoutes    = require('./routes/jobs');
 const adminRoutes  = require('./routes/admin');
 const userRoutes   = require('./routes/user');
+const publicRoutes  = require('./routes/public');
 const { runScraper } = require('./results/scraper-engine');
 const { initDB, client, jobQueries, portalQueries, userQueries, seedKIETPortal } = require('./db/database');
 const bcrypt = require('bcryptjs');
@@ -33,6 +34,7 @@ app.use('/api/portals', portalRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/user', userRoutes);
+app.use('/api/public', publicRoutes);
 
 // ─── Health & Ping (Keep-alive) ───
 app.get('/api/health', (req, res) => res.status(200).json({ status: 'ok', time: new Date().toISOString() }));

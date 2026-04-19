@@ -1428,7 +1428,7 @@ function renderDisclaimer(app) {
 // ════════════════════════════════════════════════════════
 async function injectAds() {
   try {
-    const data = await api('GET', '/api/admin/settings');
+    const data = await api('GET', '/api/public/settings');
     const s = data.settings || {};
     if (s.adsense_enabled !== 'true' || !s.adsense_script) {
       document.querySelectorAll('.ad-slot').forEach(el => el.style.display = 'none');
