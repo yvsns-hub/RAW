@@ -735,18 +735,23 @@ tr:hover td {
 /* ── Modal ── */
 .modal-overlay {
   position: fixed; inset: 0;
-  background: rgba(0,0,0,0.6);
-  z-index: 100;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(8px);
+  z-index: 2000;
 }
 .modal-box {
   position: fixed;
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  width: 90%; max-width: 560px;
+  width: 95%; max-width: 800px;
   max-height: 90vh;
   overflow-y: auto;
-  z-index: 101;
+  z-index: 2001;
   padding: 2rem;
+  border-radius: 20px;
+  background: var(--color-bg);
+  border: 1px solid rgba(255,255,255,0.15);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
 }
 #portalModal { position: fixed; inset: 0; z-index: 99; }
 
@@ -757,10 +762,10 @@ tr:hover td {
   gap: 1.5rem;
 }
 .portal-form-section {
-  background: rgba(255,255,255,0.02);
-  padding: 1rem;
+  background: rgba(255,255,255,0.03);
+  padding: 1.25rem;
   border-radius: var(--radius);
-  border: 1px solid rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
 }
 .sem-chip {
   padding: 0.3rem 0.8rem;
@@ -774,25 +779,10 @@ tr:hover td {
 }
 .sem-chip:hover { background: var(--color-primary); color: white; }
 
-.modal-overlay {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  background: rgba(0,0,0,0.85);
-  backdrop-filter: blur(8px);
-  z-index: 2000;
-}
-.modal-box {
-  position: fixed;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  width: 90%;
-  max-width: 800px;
-  max-height: 85vh;
-  overflow-y: auto;
-  z-index: 2001;
-  padding: 2.5rem;
-  border-radius: 24px;
+@media (max-width: 768px) {
+  .portal-grid-editor {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ── Loading ── */
