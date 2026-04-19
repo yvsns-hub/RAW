@@ -646,44 +646,89 @@ tr:hover td {
   background: rgba(255, 255, 255, 0.04);
 }
 
-/* ── Intro / Splash ── */
+/* ──── SPLASH / INTRO ──── */
 #intro {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: #050505;
+  inset: 0;
+  background: radial-gradient(ellipse at center, hsl(220,20%,8%) 0%, #030303 100%);
   z-index: 10000;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   overflow: hidden;
 }
 
-#intro.fade-out {
-  animation: fadeOut 1s ease forwards;
+/* Ambient rings behind logo */
+#intro::before, #intro::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(212,175,55,0.15);
+  animation: ringPulse 3s ease-in-out infinite;
+}
+#intro::before { width: 55vmin; height: 55vmin; animation-delay: 0s; }
+#intro::after  { width: 80vmin; height: 80vmin; animation-delay: 0.6s; }
+
+@keyframes ringPulse {
+  0%, 100% { opacity: 0.15; transform: scale(1); }
+  50%       { opacity: 0.35; transform: scale(1.04); }
 }
 
 .intro-content {
+  position: relative;
+  z-index: 1;
   text-align: center;
-  animation: revealLogo 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  animation: revealLogo 1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 2rem;
 }
 
+/* BIG logo that fills comfortably on any screen */
 .intro-logo {
-  height: 120px;
-  margin-bottom: 2rem;
+  width: min(280px, 55vmin);
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 0 40px rgba(212,175,55,0.4)) drop-shadow(0 0 80px rgba(212,175,55,0.15));
+  animation: logoPulse 2.2s ease-in-out infinite;
 }
 
+@keyframes logoPulse {
+  0%, 100% { filter: drop-shadow(0 0 40px rgba(212,175,55,0.4)) drop-shadow(0 0 80px rgba(212,175,55,0.15)); }
+  50%       { filter: drop-shadow(0 0 60px rgba(212,175,55,0.6)) drop-shadow(0 0 120px rgba(212,175,55,0.25)); }
+}
+
+.intro-tagline {
+  font-size: clamp(0.85rem, 2.5vw, 1.1rem);
+  color: rgba(255,255,255,0.45);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.intro-title {
+  font-size: clamp(1.4rem, 5vw, 2.4rem);
+  font-weight: 800;
+  background: linear-gradient(135deg, #FFD700 0%, #D4AF37 50%, #C0C0C0 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 0.05em;
+}
+
+/* Progress bar */
 .intro-loader {
-  width: 40px;
-  height: 2px;
-  background: rgba(212, 175, 55, 0.2);
+  width: clamp(120px, 30vw, 240px);
+  height: 3px;
+  background: rgba(212, 175, 55, 0.15);
+  border-radius: 99px;
   margin: 0 auto;
   position: relative;
   overflow: hidden;
 }
-
 .intro-loader::after {
   content: '';
   position: absolute;
@@ -691,84 +736,209 @@ tr:hover td {
   left: -100%;
   width: 100%;
   height: 100%;
-  background: var(--color-primary);
-  animation: loadingBar 2s infinite;
+  background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
+  animation: loadingBar 1.8s ease-in-out infinite;
 }
 
 @keyframes loadingBar {
-  0% {
-    left: -100%;
-  }
-
-  50% {
-    left: 0;
-  }
-
-  100% {
-    left: 100%;
-  }
+  0%   { left: -100%; }
+  100% { left: 100%; }
 }
 
-/* Responsive tweaks */
-@media (max-width: 600px) {
+#intro.fade-out {
+  animation: introFadeOut 0.8s ease forwards;
+}
+@keyframes introFadeOut {
+  to { opacity: 0; transform: scale(1.04); visibility: hidden; }
+}
+
+
+/* ──── MOBILE RESPONSIVE ──── */
+
+/* Nav collapse for small screens */
+@media (max-width: 680px) {
   #nav {
-    margin: 0.5rem;
-    padding: 0.6rem 1rem;
-    border-radius: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100vw - 1rem);
+    max-width: none;
+    padding: 0.5rem 0.75rem;
+    border-radius: 14px;
   }
 
   .nav-container {
     gap: 0.5rem;
-  }
-
-  .logo {
-    font-size: 1.2rem;
+    flex-wrap: wrap;
+    justify-content: center;
   }
 
   .nav-links {
-    gap: 0.8rem;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
   }
 
   .nav-links a {
-    font-size: 0.85rem;
+    font-size: 0.78rem;
+  }
+
+  /* Shrink Sign In/Out button on mobile */
+  .nav-links .btn,
+  #nav .btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.78rem;
+  }
+
+  #app {
+    padding-top: 5.5rem; /* extra top padding for taller nav on mobile */
   }
 
   .glass {
     padding: 1rem;
   }
 
-  header h1 {
-    font-size: 1.4rem;
-  }
-
-  /* Hero Scaling */
+  /* Hero */
   .hero {
-    padding: 3rem 1rem 4rem;
+    padding: 2.5rem 1rem 3.5rem;
   }
-
   .hero h1 {
-    font-size: 2.2rem;
-    margin-bottom: 1rem;
+    font-size: 2rem;
+    margin-bottom: 0.8rem;
   }
-
   .hero p {
-    font-size: 1rem;
-    margin-bottom: 2rem;
+    font-size: 0.95rem;
+    margin-bottom: 1.5rem;
   }
-
   .hero-btns {
     flex-direction: column;
-    gap: 0.8rem;
+    gap: 0.75rem;
   }
 
   .features-grid {
     grid-template-columns: 1fr;
     gap: 1rem;
   }
-
   .steps-container {
     grid-template-columns: 1fr;
-    gap: 1.5rem;
+    gap: 1rem;
+  }
+
+  /* Tables: make scrollable horizontally */
+  .table-wrap, table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    font-size: 0.78rem;
+  }
+  th, td {
+    padding: 0.45rem 0.5rem;
+    white-space: nowrap;
+  }
+
+  /* Wizard */
+  .wizard-steps {
+    gap: 0.25rem;
+    font-size: 0.7rem;
+  }
+  .wizard-step {
+    padding: 0.35rem 0.5rem;
+    font-size: 0.7rem;
+  }
+
+  /* Review grid */
+  .review-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Dash header */
+  .dash-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  .dash-actions {
+    width: 100%;
+    gap: 0.5rem;
+  }
+  .dash-actions .btn {
+    flex: 1;
+    font-size: 0.78rem;
+    padding: 0.5rem 0.5rem;
+    text-align: center;
+  }
+
+  /* Stats */
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+  }
+  .stat-card {
+    padding: 0.75rem;
+    gap: 0.5rem;
+  }
+  .stat-icon { font-size: 1.4rem; }
+  .stat-info h3 { font-size: 1rem; }
+
+  /* Page header */
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  .page-header h2 { font-size: 1.2rem; }
+
+  /* Modal */
+  .modal-box {
+    padding: 1rem;
+    border-radius: 14px;
+  }
+  #portalModal {
+    padding: 70px 3% 3%;
+  }
+  .portal-grid-editor {
+    grid-template-columns: 1fr;
+  }
+
+  /* Progress page live panels stack */
+  [style*='grid-template-columns:1fr 1fr'] {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  /* Auth card */
+  .auth-card {
+    padding: 1.5rem;
+  }
+
+  /* Profile */
+  .profile-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Ensure minimum tap target size (44px) */
+  .btn {
+    min-height: 40px;
+  }
+
+  /* Paragraph text size */
+  body {
+    font-size: 0.95rem;
+  }
+}
+
+/* Tablet adjustments */
+@media (min-width: 681px) and (max-width: 900px) {
+  .portal-grid-editor {
+    grid-template-columns: 1fr;
+  }
+  .profile-grid {
+    grid-template-columns: 1fr;
+  }
+  .review-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  table {
+    font-size: 0.85rem;
   }
 }
 
