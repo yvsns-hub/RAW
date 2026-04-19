@@ -28,8 +28,6 @@ function updateNav() {
       ? `<a onclick="navigate('admin')" style="cursor:pointer;color:var(--color-warning);">\uD83D\uDEE1 Admin</a>`
       : '';
     navLinks.innerHTML = `
-      <a href="#/home">Home</a>
-      <a href="#/about">About</a>
       ${adminBtn}
       <a onclick="navigate('portals')" style="cursor:pointer;">\uD83C\uDFEB Portals</a>
       ${themeBtn}
@@ -174,6 +172,8 @@ window.addEventListener('load', () => {
 //  HOME / LANDING PAGE
 // ════════════════════════════════════════════════════════
 function renderHome(app) {
+  // If logged in redirect to dashboard directly
+  if (currentUser) { navigate('dashboard'); return; }
   app.innerHTML = `
   <div class="fade-in">
     <section class="hero">

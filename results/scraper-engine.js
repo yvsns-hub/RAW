@@ -200,29 +200,176 @@ async function scrapeStudent(browser, student, portalConfig, onLog) {
 async function buildExcel(results) {
   try {
     const wb = new ExcelJS.Workbook();
-    const ws1 = wb.addWorksheet('Summary');
+    wb.creator = 'RAW — Results Automation Website';
+
+    // ══════════════════════════════════════════
+    //  SHEET 1 — Full Results with color coding
+    // ══════════════════════════════════════════
+    const ws1 = wb.addWorksheet('Results');
     ws1.columns = [
-      { header: 'S.No', key: 'sno', width: 6 },
-      { header: 'Roll Number', key: 'rollNo', width: 18 },
-      { header: 'Student Name', key: 'name', width: 40 },
-      { header: 'SGPA', key: 'sgpa', width: 10 },
-      { header: 'Status', key: 'status', width: 12 },
-      { header: 'Backlogs', key: 'bkCount', width: 10 },
-      { header: 'Backlog List', key: 'bkSubs', width: 50 },
+      { header: 'S.No',         key: 'sno',     width: 6 },
+      { header: 'Roll Number',  key: 'rollNo',  width: 18 },
+      { header: 'Student Name', key: 'name',    width: 38 },
+      { header: 'SGPA',         key: 'sgpa',    width: 8  },
+      { header: 'CGPA',         key: 'cgpa',    width: 8  },
+      { header: 'Status',       key: 'status',  width: 14 },
+      { header: 'Backlogs',     key: 'bkCount', width: 9  },
+      { header: 'Backlog Subjects', key: 'bkSubs', width: 55 },
     ];
-    
+
+    // Style header row
+    const headerRow = ws1.getRow(1);
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A1A2E' } };
+    headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+    headerRow.height = 20;
+
     results.forEach((r, i) => {
-      ws1.addRow({
-        sno: i+1, rollNo: r.rollNo, name: r.name,
-        sgpa: r.sgpa, status: r.status,
-        bkCount: r.backlogs ? r.backlogs.length : 0,
-        bkSubs: (r.backlogs && Array.isArray(r.backlogs)) ? r.backlogs.map(s => s.name).join(', ') : ''
+      const backlogs = r.backlogs || [];
+      const backlogCount = backlogs.length;
+      const isAllClear = r.status === 'SUCCESS' && backlogCount === 0;
+
+      // Format backlog subjects as numbered list: "1. Subject\n2. Subject"
+      const bkText = backlogs.length > 0
+        ? backlogs.map((s, idx) => `${idx + 1}. ${s.name}`).join('\n')
+        : '';
+
+      const rowData = {
+        sno: i + 1,
+        rollNo: r.rollNo,
+        name: r.name || '',
+        sgpa: r.sgpa || 'N/A',
+        cgpa: r.cgpa || 'N/A',
+        status: r.status === 'SUCCESS' && isAllClear ? 'ALL CLEAR'
+               : r.status === 'SUCCESS' ? `${backlogCount} BACKLOG${backlogCount > 1 ? 'S' : ''}`
+               : r.status,
+        bkCount: backlogCount,
+        bkSubs: bkText,
+      };
+
+      const row = ws1.addRow(rowData);
+
+      // Color: light green for all-clear, light red for backlogs, light gray for errors
+      let bgColor;
+      if (isAllClear) {
+        bgColor = 'FFC6EFCE';      // light green
+      } else if (r.status === 'SUCCESS') {
+        bgColor = 'FFFFC7CE';      // light red
+      } else {
+        bgColor = 'FFFFF2CC';      // light yellow for errors/mismatches
+      }
+
+      row.eachCell(cell => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
+        cell.alignment = { wrapText: true, vertical: 'top' };
+        cell.border = {
+          top:    { style: 'thin', color: { argb: 'FFD0D0D0' } },
+          bottom: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+          left:   { style: 'thin', color: { argb: 'FFD0D0D0' } },
+          right:  { style: 'thin', color: { argb: 'FFD0D0D0' } },
+        };
       });
+
+      // Make status cell font bold and colored
+      const statusCell = row.getCell('status');
+      statusCell.font = {
+        bold: true,
+        color: { argb: isAllClear ? 'FF276221' : r.status === 'SUCCESS' ? 'FF9C0006' : 'FF7D6608' }
+      };
+
+      // If there are backlogs, make that cell's text dark red
+      if (backlogs.length > 0) {
+        row.getCell('bkSubs').font = { color: { argb: 'FF9C0006' } };
+      }
+
+      // Auto-height for wrapped backlog text
+      if (backlogs.length > 1) row.height = 15 * backlogs.length;
     });
 
+    // Freeze top row
+    ws1.views = [{ state: 'frozen', ySplit: 1 }];
+
+    // ══════════════════════════════════════════
+    //  SHEET 2 — Grouped by Backlog Count
+    // ══════════════════════════════════════════
+    const ws2 = wb.addWorksheet('Backlog Summary');
+
+    const groupCols = [
+      { header: 'S.No',         key: 'sno',     width: 6 },
+      { header: 'Roll Number',  key: 'rollNo',  width: 18 },
+      { header: 'Student Name', key: 'name',    width: 38 },
+      { header: 'SGPA',         key: 'sgpa',    width: 8 },
+      { header: 'Backlogs',     key: 'bkCount', width: 9 },
+      { header: 'Backlog Subjects', key: 'bkSubs', width: 55 },
+    ];
+    ws2.columns = groupCols;
+
+    // Group students
+    const groups = [
+      { label: 'ALL CLEAR', color: 'FF70AD47', bgHeader: 'FFC6EFCE', filter: r => r.status === 'SUCCESS' && (!r.backlogs || r.backlogs.length === 0) },
+      { label: '1 BACKLOG',  color: 'FF833C00', bgHeader: 'FFFFC7CE', filter: r => r.status === 'SUCCESS' && r.backlogs?.length === 1 },
+      { label: '2 BACKLOGS', color: 'FF833C00', bgHeader: 'FFFFC7CE', filter: r => r.status === 'SUCCESS' && r.backlogs?.length === 2 },
+      { label: '3 BACKLOGS', color: 'FF833C00', bgHeader: 'FFFFC7CE', filter: r => r.status === 'SUCCESS' && r.backlogs?.length === 3 },
+      { label: '4 BACKLOGS', color: 'FF833C00', bgHeader: 'FFFFC7CE', filter: r => r.status === 'SUCCESS' && r.backlogs?.length === 4 },
+      { label: '5+ BACKLOGS', color: 'FF833C00', bgHeader: 'FFFFC7CE', filter: r => r.status === 'SUCCESS' && r.backlogs?.length >= 5 },
+    ];
+
+    let currentRow = 1;
+
+    for (const group of groups) {
+      const students = results.filter(group.filter);
+      if (students.length === 0) continue;
+
+      // Section header spanning all columns
+      const secRow = ws2.getRow(currentRow);
+      secRow.getCell(1).value = `${group.label} — ${students.length} student${students.length > 1 ? 's' : ''}`;
+      ws2.mergeCells(currentRow, 1, currentRow, groupCols.length);
+      secRow.getCell(1).fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: group.bgHeader } };
+      secRow.getCell(1).font  = { bold: true, size: 12, color: { argb: group.color } };
+      secRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+      secRow.height = 22;
+      currentRow++;
+
+      // Column headers for this section
+      const colRow = ws2.getRow(currentRow);
+      groupCols.forEach((col, idx) => {
+        colRow.getCell(idx + 1).value = col.header;
+        colRow.getCell(idx + 1).fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A1A2E' } };
+        colRow.getCell(idx + 1).font  = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+        colRow.getCell(idx + 1).alignment = { horizontal: 'center', vertical: 'middle' };
+      });
+      colRow.height = 18;
+      currentRow++;
+
+      // Data rows
+      students.forEach((r, i) => {
+        const backlogs = r.backlogs || [];
+        const bkText = backlogs.map((s, idx) => `${idx + 1}. ${s.name}`).join('\n');
+        const dataRow = ws2.getRow(currentRow);
+        [i + 1, r.rollNo, r.name || '', r.sgpa || 'N/A', backlogs.length, bkText]
+          .forEach((val, idx) => {
+            dataRow.getCell(idx + 1).value = val;
+            dataRow.getCell(idx + 1).alignment = { wrapText: true, vertical: 'top' };
+            dataRow.getCell(idx + 1).border = {
+              top:    { style: 'thin', color: { argb: 'FFD0D0D0' } },
+              bottom: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+              left:   { style: 'thin', color: { argb: 'FFD0D0D0' } },
+              right:  { style: 'thin', color: { argb: 'FFD0D0D0' } },
+            };
+          });
+        if (backlogs.length > 1) dataRow.height = 15 * backlogs.length;
+        currentRow++;
+      });
+
+      // 2 blank rows after each section
+      currentRow += 2;
+    }
+
+    ws2.views = [{ state: 'frozen', ySplit: 0 }];
+
+    // ── Save file ──
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const outDir = path.join(__dirname, '..', 'output');
-    const fs = require('fs');
     if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
     const outPath = path.join(outDir, `Results_${timestamp}.xlsx`);
     await wb.xlsx.writeFile(outPath);
@@ -232,6 +379,7 @@ async function buildExcel(results) {
     return null;
   }
 }
+
 
 // ─── MAIN RUNNER ───
 async function runScraper(options = {}) {
@@ -351,7 +499,20 @@ async function runScraper(options = {}) {
     results.push(result);
     completed++;
 
+    // Compute ETA
+    const elapsed = (Date.now() - startTime) / 1000;
+    const avgSec   = elapsed / completed;
+    const remaining = Math.round(avgSec * (total - completed));
+    const etaStr   = remaining > 0
+      ? (remaining >= 60 ? `${Math.floor(remaining/60)}m ${remaining%60}s` : `${remaining}s`)
+      : '—';
+
     await onStudentDone(result, i);
+    onProgress({
+      phase: 'running', current: completed, total,
+      percentage: Math.round((completed / total) * 90), // cap at 90% until Excel done
+      eta: etaStr,
+    });
   }
 
   await browser.close();
