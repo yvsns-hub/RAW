@@ -258,7 +258,7 @@ async function runScraper(options = {}) {
   let browser;
 
   if (isProd) {
-    onLog('🚀 Production Mode: Using @sparticuz/chromium');
+    onLog('🚀 Production Mode: Attempting @sparticuz/chromium');
     try {
       const executablePath = await chromium.executablePath();
       onLog(`📍 Chrome path: ${executablePath}`);
@@ -280,10 +280,28 @@ async function runScraper(options = {}) {
         headless: chromium.headless,
         ignoreHTTPSErrors: true,
       });
-      onLog('✅ Browser launched successfully');
+      onLog('✅ Browser launched successfully with Sparticuz');
     } catch (launchErr) {
-      onLog(`❌ Browser launch failed: ${launchErr.message}`);
-      throw launchErr;
+      onLog(`⚠️ Sparticuz failed: ${launchErr.message}. Falling back to standard Puppeteer...`);
+      try {
+        const fullPuppeteer = require('puppeteer');
+        browser = await fullPuppeteer.launch({
+          args: [
+            '--disable-gpu',
+            '--disable-dev-shm-usage',
+            '--disable-setuid-sandbox',
+            '--no-sandbox',
+            '--single-process',
+          ],
+          defaultViewport: { width: 1024, height: 768 },
+          headless: 'new',
+          ignoreHTTPSErrors: true,
+        });
+        onLog('✅ Browser launched with standard Puppeteer fallback');
+      } catch (fallbackErr) {
+        onLog(`❌ Final fallback failed: ${fallbackErr.message}`);
+        throw fallbackErr;
+      }
     }
   } else {
     onLog('🏠 Local Mode: Launching browser...');
@@ -347,6 +365,7 @@ async function runScraper(options = {}) {
     success: results.filter(r => r.status === 'SUCCESS').length,
     fullPass: results.filter(r => r.status === 'SUCCESS' && (!r.backlogs || r.backlogs.length === 0)).length,
     backlogs: results.filter(r => r.status === 'SUCCESS' && r.backlogs?.length > 0).length,
+    mismatch: results.filter(r => r.status === 'CREDENTIAL_MISMATCH').length,
     errors: results.filter(r => r.status === 'ERROR' || r.status === 'CREDENTIAL_MISMATCH').length,
     elapsed: `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`,
     excelPath,

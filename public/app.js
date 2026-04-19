@@ -33,7 +33,6 @@ function updateNav() {
       ${adminBtn}
       <a onclick="navigate('portals')" style="cursor:pointer;">\uD83C\uDFEB Portals</a>
       ${themeBtn}
-      <button class="btn" onclick="navigate('new-job')">\uD83D\uDE80 New Job</button>
       <button class="btn btn-outline" onclick="doLogout()">Sign Out</button>
     `;
   } else {
