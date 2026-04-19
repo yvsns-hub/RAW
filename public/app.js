@@ -56,11 +56,11 @@ function handleIntro() {
   const intro = document.getElementById('intro');
   if (!intro) return;
   
-  // High-end intro delay
+  // Show splash for 3 seconds, then 0.8s fade-out
   setTimeout(() => {
     intro.classList.add('fade-out');
-    setTimeout(() => intro.remove(), 1000);
-  }, 2200);
+    setTimeout(() => intro.remove(), 800);
+  }, 3000);
 }
 
 // Initialize theme immediately
