@@ -502,9 +502,9 @@ function portalFormHTML(p = {}) {
       </div>
     </div>
   </div>
-  <div class="portal-form-section" style="margin-top:1.5rem;">
-    <h4 style="margin-bottom:1rem; color:var(--color-primary);">Semesters Available</h4>
-    <div style="display:flex;flex-wrap:wrap;gap:1rem;">
+  <div class="portal-form-section" style="margin-top:1rem;">
+    <h4 style="margin-bottom:0.75rem; color:var(--color-primary);">Semesters Available</h4>
+    <div style="display:flex;flex-wrap:wrap;gap:0.8rem;">
       ${sems.map(s => `<label style="display:flex;align-items:center;gap:0.4rem; cursor:pointer;">
         <input type="checkbox" id="sem_${s}" value="${s}" ${selected.includes(s)?'checked':''}> <span class="sem-chip">${s}</span></label>`).join('')}
     </div>
@@ -535,13 +535,13 @@ function showModal(title, body, onSave) {
   modal.innerHTML = `
   <div class="modal-overlay" onclick="closeModal()"></div>
   <div class="modal-box glass scale-in">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2rem;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
       <h2 style="margin:0; color:var(--color-primary);">${title}</h2>
       <button onclick="closeModal()" style="background:none; border:none; color:var(--color-muted); font-size:1.5rem; cursor:pointer;">&times;</button>
     </div>
     <div id="modalMsg" class="msg"></div>
     ${body}
-    <div style="display:flex;gap:1rem;margin-top:2.5rem; justify-content:flex-end;">
+    <div style="display:flex;gap:1rem;margin-top:1.5rem; justify-content:flex-end;">
       <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
       <button class="btn" style="min-width:120px;" onclick="${onSave}">Save Portal</button>
     </div>

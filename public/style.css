@@ -743,11 +743,11 @@ tr:hover td {
   position: fixed;
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  width: 95%; max-width: 800px;
+  width: 95%; max-width: 1000px;
   max-height: 90vh;
   overflow-y: auto;
   z-index: 2001;
-  padding: 2rem;
+  padding: 1.5rem 2rem;
   border-radius: 20px;
   background: var(--color-bg);
   border: 1px solid rgba(255,255,255,0.15);
@@ -759,11 +759,11 @@ tr:hover td {
 .portal-grid-editor {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 .portal-form-section {
   background: rgba(255,255,255,0.03);
-  padding: 1.25rem;
+  padding: 1rem;
   border-radius: var(--radius);
   border: 1px solid rgba(255,255,255,0.08);
 }
