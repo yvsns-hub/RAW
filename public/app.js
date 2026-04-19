@@ -54,8 +54,9 @@ function toggleTheme() {
 
 function handleIntro() {
   const intro = document.getElementById('intro');
-  if (!intro) return;
-  
+  if (!intro || intro.dataset.started) return;
+  intro.dataset.started = '1';
+
   // Show splash for 3 seconds, then 0.8s fade-out
   setTimeout(() => {
     intro.classList.add('fade-out');
@@ -66,7 +67,9 @@ function handleIntro() {
 // Initialize theme immediately
 const savedTheme = localStorage.getItem('raw-theme') || 'dark';
 applyTheme(savedTheme);
-document.addEventListener('DOMContentLoaded', handleIntro);
+
+// Call immediately — scripts are at the bottom of body, DOM is already parsed
+handleIntro();
 
 // ─── API Helper ───
 async function api(method, path, body) {
