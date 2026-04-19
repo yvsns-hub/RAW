@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "PUPPETEER_CACHE_DIR=/opt/render/project/src/.cache/puppeteer node server.js",
     "build": "./render-build.sh"
   },
   "engines": {

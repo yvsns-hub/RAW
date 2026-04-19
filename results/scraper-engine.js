@@ -406,13 +406,17 @@ async function runScraper(options = {}) {
   let browser;
 
   if (isProd) {
-    onLog('🚀 Production Mode: Attempting @sparticuz/chromium');
+    // Use standard puppeteer — Chrome was installed by render-build.sh
+    // PUPPETEER_CACHE_DIR is set in start script so executablePath() resolves correctly
+    onLog('🚀 Production Mode: Launching Puppeteer (pre-installed Chrome)...');
     try {
-      const executablePath = await chromium.executablePath();
+      const fullPuppeteer = require('puppeteer');
+      const executablePath = fullPuppeteer.executablePath();
       onLog(`📍 Chrome path: ${executablePath}`);
-      browser = await puppeteer.launch({
+
+      browser = await fullPuppeteer.launch({
+        executablePath,
         args: [
-          ...chromium.args,
           '--disable-gpu',
           '--disable-dev-shm-usage',
           '--disable-setuid-sandbox',
@@ -424,32 +428,13 @@ async function runScraper(options = {}) {
           '--mute-audio',
         ],
         defaultViewport: { width: 1024, height: 768 },
-        executablePath,
-        headless: chromium.headless,
+        headless: true,
         ignoreHTTPSErrors: true,
       });
-      onLog('✅ Browser launched successfully with Sparticuz');
+      onLog('✅ Browser launched successfully');
     } catch (launchErr) {
-      onLog(`⚠️ Sparticuz failed: ${launchErr.message}. Falling back to standard Puppeteer...`);
-      try {
-        const fullPuppeteer = require('puppeteer');
-        browser = await fullPuppeteer.launch({
-          args: [
-            '--disable-gpu',
-            '--disable-dev-shm-usage',
-            '--disable-setuid-sandbox',
-            '--no-sandbox',
-            '--single-process',
-          ],
-          defaultViewport: { width: 1024, height: 768 },
-          headless: 'new',
-          ignoreHTTPSErrors: true,
-        });
-        onLog('✅ Browser launched with standard Puppeteer fallback');
-      } catch (fallbackErr) {
-        onLog(`❌ Final fallback failed: ${fallbackErr.message}`);
-        throw fallbackErr;
-      }
+      onLog(`❌ Browser launch failed: ${launchErr.message}`);
+      throw launchErr;
     }
   } else {
     onLog('🏠 Local Mode: Launching browser...');
