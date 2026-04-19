@@ -1013,6 +1013,12 @@ function renderJobProgress(app, jobId, jobMeta) {
     const pauseBtn = document.getElementById('pauseBtn');
     if (pauseBtn) pauseBtn.style.display = 'none';
 
+    // Force progress UI to 100%
+    document.getElementById('pPhase').textContent = '✅ Complete';
+    document.getElementById('pPct').textContent   = '100%';
+    document.getElementById('pBar').style.width   = '100%';
+    document.getElementById('pCurrent').textContent = 'Job finished successfully!';
+
     document.getElementById('completeSummary').style.display = 'block';
     document.getElementById('sTotal').textContent = d.total;
     document.getElementById('sPass').textContent  = d.fullPass;
