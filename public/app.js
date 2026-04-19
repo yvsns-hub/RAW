@@ -6,6 +6,35 @@ const socket = io();
 let currentUser = null;
 let currentJobId = null; // tracks the active job for progress page
 
+// ─── Theme & Intro Logic ───
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('raw-theme', theme);
+  const icon = document.querySelector('#themeToggle .icon');
+  if (icon) icon.textContent = theme === 'light' ? '🌙' : '☀️';
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+}
+
+function handleIntro() {
+  const intro = document.getElementById('intro');
+  if (!intro) return;
+  
+  // High-end intro delay
+  setTimeout(() => {
+    intro.classList.add('fade-out');
+    setTimeout(() => intro.remove(), 1000);
+  }, 2200);
+}
+
+// Initialize theme immediately
+const savedTheme = localStorage.getItem('raw-theme') || 'dark';
+applyTheme(savedTheme);
+document.addEventListener('DOMContentLoaded', handleIntro);
+
 // ─── API Helper ───
 async function api(method, path, body) {
   const opts = { method, headers: { 'Content-Type': 'application/json' } };
@@ -433,22 +462,30 @@ function portalFormHTML(p = {}) {
   const sems = ['1-1','1-2','2-1','2-2','3-1','3-2','4-1','4-2'];
   const selected = p.semesters || sems;
   return `
-  <div class="form-group"><label>College Name*</label><input id="pName" class="input" value="${esc(p.name||'')}" placeholder="KIET Group of Institutions"/></div>
-  <div class="form-group"><label>Login URL*</label><input id="pLoginUrl" class="input" value="${esc(p.login_url||'')}" placeholder="https://portal.college.edu/login"/></div>
-  <div class="form-group"><label>Marksheet URL*</label><input id="pMarkUrl" class="input" value="${esc(p.marksheet_url||'')}" placeholder="https://portal.college.edu/marksheet"/></div>
-  <div class="form-group"><label>Logout URL</label><input id="pLogoutUrl" class="input" value="${esc(p.logout_url||'')}" placeholder="https://portal.college.edu/logout"/></div>
-  <div class="form-group"><label>Username Field Selector</label><input id="pUserSel" class="input" value="${esc(p.username_selector||'#MainContent_UserName')}" placeholder="#MainContent_UserName"/></div>
-  <div class="form-group"><label>Password Field Selector</label><input id="pPassSel" class="input" value="${esc(p.password_selector||'#MainContent_Password')}" placeholder="#MainContent_Password"/></div>
-  <div class="form-group"><label>Submit Button Selector</label><input id="pSubmitSel" class="input" value="${esc(p.submit_selector||'input[type="submit"]')}" placeholder="input[type=submit]"/></div>
-  <div class="form-group">
-    <label>Default Password <small style="color:var(--color-muted)">(leave blank to use Roll No as password)</small></label>
-    <input id="pDefaultPass" class="input" value="${esc(p.default_password||'')}" placeholder="e.g. DOB like 01011990 or a fixed password"/>
+  <div class="portal-grid-editor">
+    <div class="portal-form-section">
+      <h4 style="margin-bottom:1rem; color:var(--color-primary);">Basic Info</h4>
+      <div class="form-group"><label>College Name*</label><input id="pName" class="input" value="${esc(p.name||'')}" placeholder="e.g. KIET Group of Institutions"/></div>
+      <div class="form-group"><label>Login URL*</label><input id="pLoginUrl" class="input" value="${esc(p.login_url||'')}" placeholder="https://..."/></div>
+      <div class="form-group"><label>Marksheet URL*</label><input id="pMarkUrl" class="input" value="${esc(p.marksheet_url||'')}" placeholder="https://..."/></div>
+      <div class="form-group"><label>Logout URL</label><input id="pLogoutUrl" class="input" value="${esc(p.logout_url||'')}" placeholder="https://..."/></div>
+    </div>
+    <div class="portal-form-section">
+      <h4 style="margin-bottom:1rem; color:var(--color-primary);">Selectors & Config</h4>
+      <div class="form-group"><label>Username Field Selector</label><input id="pUserSel" class="input" value="${esc(p.username_selector||'#MainContent_UserName')}"/></div>
+      <div class="form-group"><label>Password Field Selector</label><input id="pPassSel" class="input" value="${esc(p.password_selector||'#MainContent_Password')}"/></div>
+      <div class="form-group"><label>Submit Button Selector</label><input id="pSubmitSel" class="input" value="${esc(p.submit_selector||'input[type=\"submit\"]')}"/></div>
+      <div class="form-group">
+        <label>Default Password <small style="color:var(--color-muted)">(Optional)</small></label>
+        <input id="pDefaultPass" class="input" value="${esc(p.default_password||'')}"/>
+      </div>
+    </div>
   </div>
-  <div class="form-group">
-    <label>Semesters Available</label>
-    <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.4rem;">
-      ${sems.map(s => `<label style="display:flex;align-items:center;gap:0.3rem;color:var(--color-text);font-size:0.9rem;">
-        <input type="checkbox" id="sem_${s}" value="${s}" ${selected.includes(s)?'checked':''}> ${s}</label>`).join('')}
+  <div class="portal-form-section" style="margin-top:1.5rem;">
+    <h4 style="margin-bottom:1rem; color:var(--color-primary);">Semesters Available</h4>
+    <div style="display:flex;flex-wrap:wrap;gap:1rem;">
+      ${sems.map(s => `<label style="display:flex;align-items:center;gap:0.4rem; cursor:pointer;">
+        <input type="checkbox" id="sem_${s}" value="${s}" ${selected.includes(s)?'checked':''}> <span class="sem-chip">${s}</span></label>`).join('')}
     </div>
   </div>`;
 }
@@ -473,16 +510,19 @@ function getPortalFormData() {
 
 function showModal(title, body, onSave) {
   const modal = document.getElementById('portalModal');
-  modal.style.display = 'flex';
+  modal.style.display = 'block';
   modal.innerHTML = `
   <div class="modal-overlay" onclick="closeModal()"></div>
-  <div class="modal-box glass fade-in">
-    <h3>${title}</h3>
+  <div class="modal-box glass scale-in">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2rem;">
+      <h2 style="margin:0; color:var(--color-primary);">${title}</h2>
+      <button onclick="closeModal()" style="background:none; border:none; color:var(--color-muted); font-size:1.5rem; cursor:pointer;">&times;</button>
+    </div>
     <div id="modalMsg" class="msg"></div>
     ${body}
-    <div style="display:flex;gap:1rem;margin-top:1rem;">
-      <button class="btn" onclick="${onSave}">Save</button>
+    <div style="display:flex;gap:1rem;margin-top:2.5rem; justify-content:flex-end;">
       <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn" style="min-width:120px;" onclick="${onSave}">Save Portal</button>
     </div>
   </div>`;
 }

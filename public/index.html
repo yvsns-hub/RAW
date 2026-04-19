@@ -11,14 +11,29 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/style.css" />
 </head>
-<body>
-  <div id="nav" class="glass">
+<body class="slide-up">
+  <div class="bg-glow glow-1"></div>
+  <div class="bg-glow glow-2"></div>
+  <!-- Splash Screen (Flash Page) -->
+  <div id="intro">
+    <div class="intro-content">
+      <img src="/assets/logo.png" alt="RAW Logo" class="intro-logo">
+      <div class="intro-loader"></div>
+    </div>
+  </div>
+
+  <div id="nav" class="glass scale-in">
     <div class="nav-container">
-      <div class="logo" onclick="navigate('home')">🎓 RAW</div>
+      <div class="logo" onclick="navigate('home')">
+        <img src="/assets/logo.png" alt="Logo" class="nav-logo">
+      </div>
       <div class="nav-links">
         <a href="#/home">Home</a>
         <a href="#/about">About</a>
         <a href="#/contact">Contact</a>
+        <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle Theme">
+          <span class="icon">🌓</span>
+        </button>
         <button class="btn btn-outline" id="navLoginBtn" onclick="navigate('login')">Sign In</button>
       </div>
     </div>
