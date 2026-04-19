@@ -247,7 +247,15 @@ label {
   transition: var(--transition);
 }
 .logo:hover { transform: scale(1.05); }
-.nav-logo { height: 32px; width: auto; }
+
+.nav-logo, .intro-logo { 
+  display: block;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+.nav-logo { height: 32px; }
+.intro-logo { height: 120px; }
 
 .nav-links {
   display: flex;
@@ -287,10 +295,7 @@ label {
 }
 
 [data-theme='light'] .nav-logo, [data-theme='light'] .intro-logo {
-  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
-  background: rgba(0,0,0,0.05);
-  padding: 4px;
-  border-radius: 8px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
 }
 
 .nav-links a:hover {
