@@ -436,6 +436,10 @@ async function doLogout() {
 //  PORTALS PAGE
 // ════════════════════════════════════════════════════════
 async function renderPortals(app) {
+  // Reset the body-level portal modal (defined in index.html)
+  const pm = document.getElementById('portalModal');
+  if (pm) pm.style.display = 'none';
+
   app.innerHTML = `
   <div class="fade-in">
     <div class="page-header">
@@ -449,7 +453,6 @@ async function renderPortals(app) {
       </div>
     </div>
     <div id="portalList" class="fade-in"><p style="color:var(--color-muted)">Loading...</p></div>
-    <div id="portalModal" style="display:none"></div>
   </div>`;
 
   loadPortals();
