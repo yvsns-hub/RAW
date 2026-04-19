@@ -269,16 +269,34 @@ async function runScraper(options = {}) {
       headless: chromium.headless,
     });
   } else {
-    onLog('🏠 Local Mode: Using standard Puppeteer');
-    browser = await puppeteer.launch({
+    onLog('🏠 Local Mode: Launching browser...');
+    // Try to find a local Chrome installation
+    const localChromePaths = [
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      process.env.CHROME_PATH, // allow override via env var
+    ].filter(Boolean);
+
+    let executablePath;
+    for (const p of localChromePaths) {
+      try {
+        const fs = require('fs');
+        if (fs.existsSync(p)) { executablePath = p; break; }
+      } catch {}
+    }
+
+    const launchOptions = {
       headless: headless ? 'new' : false,
       args: [
-        '--no-sandbox', 
-        '--disable-setuid-sandbox', 
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
         '--disable-gpu'
       ],
-    });
+    };
+    if (executablePath) launchOptions.executablePath = executablePath;
+
+    browser = await puppeteer.launch(launchOptions);
   }
 
   for (let i = 0; i < students.length; i++) {

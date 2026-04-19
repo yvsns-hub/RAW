@@ -111,10 +111,11 @@ io.on('connection', (socket) => {
 
     // Mark as active with pause control
     const pauseControl = { paused: false };
-    activeJobs.set(jobId, { startTime: Date.now(), results: [], logs: [], pauseControl });
+    activeJobs.set(jobId, { startTime: Date.now(), results: [], logs: [], pauseControl, userId });
 
     const emitToClient = (event, payload) => {
-      socket.emit(event, payload);
+      // Emit to all sockets in the user's room so reconnects also receive updates
+      io.to(`user:${userId}`).emit(event, payload);
     };
 
     emitToClient('job:started', {
@@ -258,7 +259,10 @@ io.on('connection', (socket) => {
     if (jobState && jobState.pauseControl) {
       jobState.pauseControl.paused = true;
       console.log(`⏸ Job ${jobId} paused`);
-      socket.emit('job:paused', { jobId });
+      // Broadcast to all sockets for this user (handles reconnects)
+      io.to(`user:${jobState.userId}`).emit('job:paused', { jobId });
+    } else {
+      socket.emit('job:error', 'Job not found or not running.');
     }
   });
 
@@ -268,7 +272,10 @@ io.on('connection', (socket) => {
     if (jobState && jobState.pauseControl) {
       jobState.pauseControl.paused = false;
       console.log(`▶ Job ${jobId} resumed`);
-      socket.emit('job:resumed', { jobId });
+      // Broadcast to all sockets for this user (handles reconnects)
+      io.to(`user:${jobState.userId}`).emit('job:resumed', { jobId });
+    } else {
+      socket.emit('job:error', 'Job not found or not running.');
     }
   });
 
@@ -277,6 +284,8 @@ io.on('connection', (socket) => {
     const { jobId } = data;
     const jobState = activeJobs.get(jobId);
     if (jobState) {
+      // Join the user room so this socket receives future pause/resume broadcasts
+      socket.join(`user:${jobState.userId}`);
       socket.emit('job:reconnect-data', {
         jobId,
         running: true,

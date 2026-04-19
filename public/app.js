@@ -1548,7 +1548,7 @@ function renderFooter() {
   const footer = document.getElementById('footer');
   if (!footer) return;
   footer.innerHTML = `
-  <div class="glass" style="margin: 2rem; text-align: center; font-size: 0.85rem; color: var(--color-muted); flex-shrink: 0;">
+  <div class="glass" style="margin: 0; border-radius: 0; text-align: center; font-size: 0.85rem; color: var(--color-muted); padding: 2rem 1rem;">
     <div style="margin-bottom: 1rem;">
       &copy; 2026 RAW (RESULTS AUTOMATION WEBSITE). All rights reserved.
     </div>
