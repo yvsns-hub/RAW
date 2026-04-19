@@ -782,6 +782,13 @@ async function startJob() {
   // Re-authenticate socket so it's in the right room
   socket.emit('job:auth');
 
+  console.log('🚀 Starting job with data:', {
+    portal_id: wizard.portal.id,
+    semester: wizard.semester,
+    students_count: wizard.students.length,
+    headless: wizard.headless
+  });
+
   const res = await api('POST', '/api/jobs', {
     portal_id: wizard.portal.id,
     semester: wizard.semester,
