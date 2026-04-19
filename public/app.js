@@ -531,10 +531,10 @@ function getPortalFormData() {
 
 function showModal(title, body, onSave) {
   const modal = document.getElementById('portalModal');
-  modal.style.display = 'block';
+  modal.style.display = 'flex';
+  modal.onclick = (e) => { if (e.target === modal) closeModal(); };
   modal.innerHTML = `
-  <div class="modal-overlay" onclick="closeModal()"></div>
-  <div class="modal-box glass scale-in">
+  <div class="modal-box glass scale-in" onclick="event.stopPropagation()">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
       <h2 style="margin:0; color:var(--color-primary);">${title}</h2>
       <button onclick="closeModal()" style="background:none; border:none; color:var(--color-muted); font-size:1.5rem; cursor:pointer;">&times;</button>
