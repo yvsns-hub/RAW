@@ -33,6 +33,9 @@ function updateNav() {
       <a onclick="navigate('portals')" style="cursor:pointer;">\uD83C\uDFEB Portals</a>
     `;
     navActions.innerHTML = `
+      <div style="display:flex; align-items:center; gap:0.5rem; margin-right:0.5rem;">
+        <span style="font-size:0.85rem; font-weight:600; color:var(--color-primary); opacity:0.9; max-width:100px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${esc(currentUser.username)}">👋 ${esc(currentUser.username)}</span>
+      </div>
       ${themeBtn}
       <button class="btn btn-outline" onclick="doLogout()">Sign Out</button>
     `;
