@@ -1609,3 +1609,57 @@ footer a {
 footer a:hover {
   opacity: 0.7;
 }
+
+
+/* ── Mobile Nav Fix ── */
+@media (max-width: 640px) {
+  #nav {
+    top: 0.6rem;
+    padding: 0.35rem 0.8rem;
+    max-width: 96vw;
+    border-radius: 50px;
+  }
+
+  .nav-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    grid-template-columns: unset;
+  }
+
+  /* Hide logo on mobile so links fit and stay centered */
+  .nav-container .logo {
+    display: none;
+  }
+
+  .nav-links {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .nav-links a {
+    font-size: 0.78rem;
+    opacity: 0.85;
+  }
+
+  .nav-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+  }
+
+  .nav-actions .btn {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.7rem;
+  }
+
+  .theme-toggle {
+    width: 26px;
+    height: 26px;
+    font-size: 0.95rem;
+  }
+}
