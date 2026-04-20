@@ -34,7 +34,7 @@ function updateNav() {
     `;
     navActions.innerHTML = `
       <div style="display:flex; align-items:center; gap:0.5rem; margin-right:0.5rem;">
-        <span style="font-size:0.85rem; font-weight:600; color:var(--color-primary); opacity:0.9; max-width:100px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${esc(currentUser.username)}">👋 ${esc(currentUser.username)}</span>
+        <a onclick="navigate('profile')" style="font-size:0.85rem; font-weight:600; color:var(--color-primary); opacity:0.9; max-width:100px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; text-decoration:none;" title="Account Settings">👋 ${esc(currentUser.username)}</a>
       </div>
       ${themeBtn}
       <button class="btn btn-outline" onclick="doLogout()">Sign Out</button>
