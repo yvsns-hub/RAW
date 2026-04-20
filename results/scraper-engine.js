@@ -397,9 +397,9 @@ async function runScraper(options = {}) {
   const total = students.length;
   const startTime = Date.now();
   const results = [];
-  let completed = 0;
+  let completed = options.startIndex || 0;
 
-  onProgress({ phase: 'launching', message: 'Launching Cloud Browser...', current: 0, total, percentage: 0 });
+  onProgress({ phase: 'launching', message: 'Launching Cloud Browser...', current: completed, total, percentage: total > 0 ? Math.round((completed/total)*100) : 0 });
 
   // ── Render/Production Config ──
   const isProd = process.env.NODE_ENV === 'production' || !!process.env.RENDER;
@@ -467,7 +467,7 @@ async function runScraper(options = {}) {
     browser = await puppeteer.launch(launchOptions);
   }
 
-  for (let i = 0; i < students.length; i++) {
+  for (let i = options.startIndex || 0; i < students.length; i++) {
     while (pauseControl.paused) {
       onProgress({ phase: 'paused', current: completed, total });
       await DELAY(1000);

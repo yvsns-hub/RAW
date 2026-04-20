@@ -953,12 +953,15 @@ function renderJobProgress(app, jobId, jobMeta) {
   // Handle reconnect data (if job is already running in background)
   socket.once('job:reconnect-data', (d) => {
     if (d.running) {
-      console.log('Reconnected to running job, restoring state...');
-      document.getElementById('pTotal').textContent = '?';
+      console.log('Reconnected to running job, restoring state...', d.total);
+      
+      // Update totals
+      if (d.total) { document.getElementById('pTotal').textContent = d.total; }
       showPauseBtn(d.paused);
 
       // Restore cached results
       const tbody = document.getElementById('liveResults');
+      tbody.innerHTML = ''; // Prevent duplicates
       (d.results || []).forEach(r => {
         const sc = r.status === 'SUCCESS' && r.backlogCount === 0 ? 'success' : r.status === 'SUCCESS' ? 'warning' : 'error';
         const st = r.status === 'SUCCESS' && r.backlogCount === 0 ? '✅ Pass' : r.status === 'SUCCESS' ? `🔴 ${r.backlogCount} BL` : '❌ Err';
@@ -970,6 +973,7 @@ function renderJobProgress(app, jobId, jobMeta) {
 
       // Restore cached logs
       const log = document.getElementById('liveLog');
+      log.innerHTML = ''; // Prevent duplicates
       (d.logs || []).forEach(l => {
         const div = document.createElement('div');
         div.textContent = `[${new Date(l.time).toLocaleTimeString()}] ${l.message}`;
@@ -981,18 +985,21 @@ function renderJobProgress(app, jobId, jobMeta) {
         document.getElementById('pPhase').textContent = '⏸ Paused';
       }
 
-      // Re-register for live updates, but DON'T restart the job
-      // (it's already running on server)
+      // Important: Disable the fallback timer to avoid accidentally starting the job!
+      window._jobReconnectSuccess = true;
     } else {
       // Job not running, start it fresh
+      window._jobReconnectSuccess = true;
       doStartJob();
     }
   });
 
-  // Fallback: if reconnect never fires, start after 2s
+  // Fallback: if reconnect never fires (e.g. server delay), start after 2s
   setTimeout(() => {
-    const el = document.getElementById('pTotal');
-    if (el && el.textContent === '?') { console.log('Fallback: starting job directly'); doStartJob(); }
+    if (!window._jobReconnectSuccess) {
+      console.log('Fallback: starting job directly since no reconnect data was received.');
+      doStartJob();
+    }
   }, 2000);
 
   // Pause/resume confirmations

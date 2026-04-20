@@ -109,9 +109,15 @@ io.on('connection', (socket) => {
       return;
     }
 
+    const startIndex = Math.max(0, Number(job.completed_students) || 0);
+    const passCountDb = Number(job.pass_count) || 0;
+    const backlogCountDb = Number(job.backlog_count) || 0;
+    const errorCountDb = Number(job.error_count) || 0;
+    const mismatchCountDb = Number(job.mismatch_count) || 0;
+
     // Mark as active with pause control
     const pauseControl = { paused: false };
-    activeJobs.set(jobId, { startTime: Date.now(), results: [], logs: [], pauseControl, userId });
+    activeJobs.set(jobId, { startTime: Date.now(), results: [], logs: [], pauseControl, userId, totalStudents: students.length });
 
     const emitToClient = (event, payload) => {
       // Emit to all sockets in the user's room so reconnects also receive updates
@@ -142,6 +148,11 @@ io.on('connection', (socket) => {
         students,
         headless: Number(job.headless) === 1,
         pauseControl,
+        startIndex,
+        passCount: passCountDb,
+        backlogCount: backlogCountDb,
+        errorCount: errorCountDb,
+        mismatchCount: mismatchCountDb,
 
         onProgress: (progressData) => {
           emitToClient('job:progress', { jobId, ...progressData });
@@ -290,6 +301,7 @@ io.on('connection', (socket) => {
         jobId,
         running: true,
         paused: jobState.pauseControl?.paused || false,
+        total: jobState.totalStudents || 0,
         results: jobState.results,
         logs: jobState.logs.slice(-100),
       });
