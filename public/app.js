@@ -724,7 +724,7 @@ function renderWizardStep3(body) {
   <h3 style="margin-bottom:1rem;">Enter Students</h3>
   <div id="stepMsg" class="msg"></div>
   <p style="color:var(--color-muted);margin-bottom:0.5rem;">Paste roll numbers and names (one student per line).<br/>
-  Format: <code style="background:rgba(255,255,255,0.06);padding:0.1rem 0.4rem;border-radius:4px;">ROLLNO,STUDENT NAME</code></p>
+  Format: <code style="background:rgba(255,255,255,0.06);padding:0.1rem 0.4rem;border-radius:4px;">ROLLNO NAME</code> (spaces, tabs, or commas allowed)</p>
   <textarea id="studentsInput" class="input" rows="12" style="font-family:var(--font-mono);font-size:0.85rem;resize:vertical;"
   placeholder="256Q1A4234,MANTENA VENKATA ESWANTH VARMA
 256Q1A4235,JAMMULA RAGHURAM
@@ -753,11 +753,31 @@ function wizardNext3() {
   for (const line of lines) {
     // Skip JSON-looking lines or obviously invalid entries
     if (line.startsWith('{') || line.startsWith('}') || line.startsWith('[') || line.startsWith('"') || !line.match(/[A-Z0-9]{5,}/i)) continue;
-    // Support both | and , as separator
-    const sep = line.includes('|') ? '|' : ',';
-    const parts = line.split(sep);
-    const rollNo = parts[0].trim();
-    const name = parts.slice(1).join(sep).trim() || rollNo;
+    // Smart parsing for separators: tab, pipe, comma, or just spaces
+    let rollNo = '';
+    let name = '';
+
+    if (line.includes('\t')) {
+      const parts = line.split('\t');
+      rollNo = parts[0].trim();
+      name = parts.slice(1).join(' ').trim() || rollNo;
+    } else if (line.includes(',') || line.includes('|')) {
+      const sep = line.includes('|') ? '|' : ',';
+      const parts = line.split(sep);
+      rollNo = parts[0].trim();
+      name = parts.slice(1).join(sep).trim() || rollNo;
+    } else {
+      // Space separated fallback (e.g. "25B21A4294 DAKAMARI VIVEK")
+      const firstSpace = line.indexOf(' ');
+      if (firstSpace > 0) {
+        rollNo = line.substring(0, firstSpace).trim();
+        name = line.substring(firstSpace + 1).trim() || rollNo;
+      } else {
+        rollNo = line.trim();
+        name = rollNo;
+      }
+    }
+
     if (rollNo) students.push({ rollNo, name });
   }
 
