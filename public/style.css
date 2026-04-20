@@ -353,14 +353,16 @@ label {
 }
 
 .nav-container {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 1rem;
+  width: 100%;
 }
 
 .logo {
+  flex: 1 1 0%;
   display: flex;
+  justify-content: flex-start;
   align-items: center;
   cursor: pointer;
   transition: var(--transition);
@@ -387,6 +389,7 @@ label {
 }
 
 .nav-links {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -408,6 +411,7 @@ label {
 }
 
 .nav-actions {
+  flex: 1 1 0%;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -1625,7 +1629,6 @@ footer a:hover {
     justify-content: center;
     align-items: center;
     gap: 0.5rem;
-    grid-template-columns: unset;
   }
 
   /* Hide logo on mobile so links fit and stay centered */
@@ -1634,6 +1637,7 @@ footer a:hover {
   }
 
   .nav-links {
+    flex: 0 0 auto;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -1646,6 +1650,7 @@ footer a:hover {
   }
 
   .nav-actions {
+    flex: 0 0 auto;
     display: flex;
     align-items: center;
     justify-content: center;
