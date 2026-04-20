@@ -139,6 +139,21 @@
   animation: scaleIn 0.5s ease-out forwards;
 }
 
+#nav.scale-in {
+  animation: navScaleIn 0.5s ease-out forwards;
+}
+
+@keyframes navScaleIn {
+  from {
+    transform: translateX(-50%) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -338,9 +353,8 @@ label {
 #nav {
   position: fixed;
   top: 0.8rem;
-  left: 0;
-  right: 0;
-  margin: 0 auto;
+  left: 50%;
+  transform: translateX(-50%);
   width: max-content;
   padding: 0.35rem 1rem;
   z-index: 1000;
@@ -1625,16 +1639,19 @@ footer a:hover {
 @media (max-width: 640px) {
   #nav {
     top: 0.6rem;
-    padding: 0.35rem 0.8rem;
+    padding: 0.35rem 0.6rem;
+    width: max-content;
     max-width: 96vw;
     border-radius: 50px;
+    left: 50%;
+    transform: translateX(-50%);
   }
 
   .nav-container {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.3rem;
   }
 
   /* Hide logo on mobile so links fit and stay centered */
@@ -1647,11 +1664,11 @@ footer a:hover {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.4rem;
   }
 
   .nav-links a {
-    font-size: 0.78rem;
+    font-size: 0.72rem;
     opacity: 0.85;
   }
 
