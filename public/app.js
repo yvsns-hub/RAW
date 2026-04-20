@@ -16,8 +16,9 @@ function applyTheme(theme) {
 
 // ─── Dynamic Nav Renderer ───
 function updateNav() {
-  const navLinks = document.getElementById('nav-links');
-  if (!navLinks) return;
+  const navLinks   = document.getElementById('nav-links');
+  const navActions = document.getElementById('nav-actions');
+  if (!navLinks || !navActions) return;
   const theme = localStorage.getItem('raw-theme') || 'dark';
   const themeIcon = theme === 'light' ? '\uD83C\uDF19' : '\u2600\uFE0F';
   const themeBtn = `<button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle Theme"><span class="icon">${themeIcon}</span></button>`;
@@ -30,6 +31,8 @@ function updateNav() {
     navLinks.innerHTML = `
       ${adminBtn}
       <a onclick="navigate('portals')" style="cursor:pointer;">\uD83C\uDFEB Portals</a>
+    `;
+    navActions.innerHTML = `
       ${themeBtn}
       <button class="btn btn-outline" onclick="doLogout()">Sign Out</button>
     `;
@@ -39,6 +42,8 @@ function updateNav() {
       <a href="#/home">Home</a>
       <a href="#/about">About</a>
       <a href="#/contact">Contact</a>
+    `;
+    navActions.innerHTML = `
       ${themeBtn}
       <button class="btn btn-outline" onclick="navigate('login')">Sign In</button>
     `;
