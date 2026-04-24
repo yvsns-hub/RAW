@@ -195,6 +195,12 @@ const jobQueries = {
   },
   deleteJob: {
     run: (id, userId) => client.execute({ sql: `DELETE FROM jobs WHERE id = ? AND user_id = ?`, args: [id, userId] })
+  },
+  updateExcelPath: {
+    run: (excelPath, jobId) => client.execute({
+      sql: `UPDATE jobs SET excel_path = ? WHERE id = ?`,
+      args: [excelPath, jobId]
+    })
   }
 };
 

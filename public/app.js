@@ -1419,12 +1419,14 @@ async function renderProfile(app) {
     <div class="profile-grid">
       <div class="profile-sidebar glass">
         <div class="avatar-large">👤</div>
-        <h3 style="text-align:center;">${esc(u.username)}</h3>
-        <p style="text-align:center; color:var(--color-muted); font-size:0.9rem;">${esc(u.email)}</p>
-        <hr style="margin:1.5rem 0; border:0; border-top:1px solid rgba(255,255,255,0.1);">
-        <div style="font-size:0.9rem;">
-          <p><strong>Role:</strong> <span class="badge ${u.role==='admin'?'warning':'success'}">${u.role}</span></p>
-          <p style="margin-top:0.5rem;"><strong>Joined:</strong> ${fmtDate(u.created_at)}</p>
+        <div class="profile-info-text">
+          <h3 style="text-align:center;">${esc(u.username)}</h3>
+          <p style="text-align:center; color:var(--color-muted); font-size:0.9rem;">${esc(u.email)}</p>
+          <hr style="margin:1rem 0; border:0; border-top:1px solid rgba(255,255,255,0.1);">
+          <div style="font-size:0.9rem;">
+            <p><strong>Role:</strong> <span class="badge ${u.role==='admin'?'warning':'success'}">${u.role}</span></p>
+            <p style="margin-top:0.5rem;"><strong>Joined:</strong> ${fmtDate(u.created_at)}</p>
+          </div>
         </div>
       </div>
       

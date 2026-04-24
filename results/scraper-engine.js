@@ -523,4 +523,4 @@ async function runScraper(options = {}) {
   return summary;
 }
 
-module.exports = { runScraper };
+module.exports = { runScraper, rebuildExcel: buildExcel };

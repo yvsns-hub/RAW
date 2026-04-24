@@ -1,7 +1,9 @@
 const express = require('express');
 const { jobQueries, portalQueries } = require('../db/database');
 const { requireAuth } = require('../middleware/auth');
+const { rebuildExcel } = require('../results/scraper-engine');
 const path = require('path');
+const fs = require('fs');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -107,10 +109,32 @@ router.get('/:id/download', async (req, res) => {
     if (!job || Number(job.user_id) !== req.session.userId) {
       return res.status(404).json({ error: 'Job not found.' });
     }
-    if (!job.excel_path) {
-      return res.status(404).json({ error: 'No Excel file available for this job.' });
+
+    let filePath = job.excel_path;
+    let fileExists = filePath && fs.existsSync(filePath);
+
+    // If file doesn't exist on disk (e.g. Render restart wiped ephemeral storage),
+    // regenerate from stored results_data in the database
+    if (!fileExists) {
+      const resultsData = JSON.parse(job.results_data || '[]');
+      if (!resultsData.length) {
+        return res.status(404).json({ error: 'No results data available to generate Excel. The job may not have completed successfully.' });
+      }
+      console.log(`📦 Regenerating Excel for job ${req.params.id} from stored data...`);
+      filePath = await rebuildExcel(resultsData);
+      if (!filePath) {
+        return res.status(500).json({ error: 'Failed to regenerate Excel file.' });
+      }
+      // Update the stored path so next download is faster
+      await jobQueries.updateExcelPath.run(filePath, parseInt(req.params.id));
+      fileExists = true;
     }
-    res.download(job.excel_path, path.basename(job.excel_path));
+
+    // Serve the file with correct headers for MS Excel
+    const filename = path.basename(filePath);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.sendFile(path.resolve(filePath));
   } catch (err) {
     console.error('Download excel error:', err);
     res.status(500).json({ error: 'Failed to download file.' });
