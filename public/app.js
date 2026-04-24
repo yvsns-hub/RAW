@@ -430,7 +430,7 @@ async function renderDashboard(app) {
           <td>${esc(j.semester || '—')}</td>
           <td>${j.total_students}</td>
           <td><span class="badge ${j.status === 'completed' ? 'success' : j.status === 'failed' ? 'error' : 'warning'}">${j.status}</span></td>
-          <td>${j.excel_path ? `<a href="/api/jobs/${j.id}/download" class="btn btn-outline" style="padding:0.2rem 0.6rem;font-size:0.8rem;">⬇ Excel</a>` : '—'}</td>
+          <td>${j.status === 'completed' ? `<a href="/api/jobs/${j.id}/download" class="btn btn-outline" style="padding:0.2rem 0.6rem;font-size:0.8rem;">⬇ Excel</a>` : '—'}</td>
         </tr>`).join('')}
       </tbody>
     </table>`;
@@ -1127,7 +1127,7 @@ async function loadHistory() {
           <td style="color:var(--color-warning);font-weight:600">${j.backlog_count}</td>
           <td style="color:var(--color-error)">${j.error_count}</td>
           <td><span class="badge ${j.status==='completed'?'success':j.status==='failed'?'error':'warning'}">${j.status}</span></td>
-          <td>${j.excel_path ? `<a href="/api/jobs/${j.id}/download" class="btn btn-outline" style="padding:0.2rem 0.6rem;font-size:0.8rem;">⬇ Excel</a>` : '—'}</td>
+          <td>${j.status === 'completed' ? `<a href="/api/jobs/${j.id}/download" class="btn btn-outline" style="padding:0.2rem 0.6rem;font-size:0.8rem;">⬇ Excel</a>` : '—'}</td>
           <td><button onclick="deleteJob(${j.id})" style="background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--color-error);padding:0.2rem;" title="Delete job">🗑</button></td>
         </tr>`).join('')}
       </tbody>
@@ -1226,7 +1226,7 @@ async function switchAdminTab(tab) {
             <td>${esc(j.semester || '—')}</td>
             <td>${j.total_students}</td>
             <td><span class="badge ${j.status==='completed'?'success':j.status==='failed'?'error':'warning'}">${j.status}</span></td>
-            <td>${j.excel_path ? `<a href="/api/jobs/${j.id}/download" class="btn btn-outline" style="padding:0.2rem 0.6rem;font-size:0.8rem;">⬇ Excel</a>` : '—'}</td>
+            <td>${j.status === 'completed' ? `<a href="/api/jobs/${j.id}/download" class="btn btn-outline" style="padding:0.2rem 0.6rem;font-size:0.8rem;">⬇ Excel</a>` : '—'}</td>
           </tr>`).join('')}
         </tbody>
       </table>
@@ -1317,7 +1317,7 @@ async function switchAdminTab(tab) {
             <td>${esc(j.semester || '—')}</td>
             <td>${j.total_students}</td>
             <td><span class="badge ${j.status==='completed'?'success':j.status==='failed'?'error':'warning'}">${j.status}</span></td>
-            <td>${j.excel_path ? `<a href="/api/jobs/${j.id}/download" class="btn btn-outline" style="padding:0.2rem 0.6rem;font-size:0.8rem;">⬇ Excel</a>` : '—'}</td>
+            <td>${j.status === 'completed' ? `<a href="/api/jobs/${j.id}/download" class="btn btn-outline" style="padding:0.2rem 0.6rem;font-size:0.8rem;">⬇ Excel</a>` : '—'}</td>
           </tr>`).join('')}
         </tbody>
       </table>
@@ -1416,41 +1416,46 @@ async function renderProfile(app) {
       <button class="btn btn-outline" onclick="navigate('dashboard')">← Dashboard</button>
     </div>
 
-    <div class="profile-grid">
-      <div class="profile-sidebar glass">
-        <div class="avatar-large">👤</div>
-        <div class="profile-info-text">
-          <h3 style="text-align:center;">${esc(u.username)}</h3>
-          <p style="text-align:center; color:var(--color-muted); font-size:0.9rem;">${esc(u.email)}</p>
-          <hr style="margin:1rem 0; border:0; border-top:1px solid rgba(255,255,255,0.1);">
-          <div style="font-size:0.9rem;">
-            <p><strong>Role:</strong> <span class="badge ${u.role==='admin'?'warning':'success'}">${u.role}</span></p>
-            <p style="margin-top:0.5rem;"><strong>Joined:</strong> ${fmtDate(u.created_at)}</p>
-          </div>
-        </div>
+    <!-- Name & Email Card -->
+    <div class="glass profile-name-card" style="text-align:center; margin-bottom:1rem;">
+      <div style="font-size:2.5rem; margin-bottom:0.3rem;">👤</div>
+      <h3 style="margin:0; font-size:1.2rem;">${esc(u.username)}</h3>
+      <p style="color:var(--color-muted); font-size:0.85rem; margin:0.2rem 0 0.5rem;">${esc(u.email)}</p>
+      <div style="display:flex; justify-content:center; gap:0.8rem; font-size:0.82rem;">
+        <span><strong>Role:</strong> <span class="badge ${u.role==='admin'?'warning':'success'}">${u.role}</span></span>
+        <span style="color:var(--color-muted);">Joined: ${fmtDate(u.created_at)}</span>
       </div>
-      
-      <div class="profile-content">
-        <div class="stats-grid">
-          <div class="stat-card glass"><div class="stat-icon">📋</div><div class="stat-info"><h3>${s.totalJobs}</h3><p>Total Jobs</p></div></div>
-          <div class="stat-card glass"><div class="stat-icon">🏫</div><div class="stat-info"><h3>${s.totalPortals}</h3><p>Portals</p></div></div>
-          <div class="stat-card glass"><div class="stat-icon">🎓</div><div class="stat-info"><h3>${s.totalStudentsScraped}</h3><p>Scraped</p></div></div>
-        </div>
+    </div>
 
-        <div class="glass" style="margin-top:1.5rem;">
-          <h3>Update Account</h3>
-          <div id="profMsg" class="msg"></div>
-          <div class="form-group">
-            <label>Username</label>
-            <input id="updUser" class="input" value="${esc(u.username)}">
-          </div>
-          <div class="form-group">
-            <label>New Password (leave blank to keep current)</label>
-            <input id="updPass" type="password" class="input" placeholder="••••••••">
-          </div>
-          <button class="btn" onclick="updateProfile()">💾 Save Changes</button>
-        </div>
+    <!-- Stats: 2 half + 1 full -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.6rem; margin-bottom:1rem;">
+      <div class="stat-card glass">
+        <div class="stat-icon">📋</div>
+        <div class="stat-info"><h3>${s.totalJobs}</h3><p>Total Jobs</p></div>
       </div>
+      <div class="stat-card glass">
+        <div class="stat-icon">🏫</div>
+        <div class="stat-info"><h3>${s.totalPortals}</h3><p>Portals</p></div>
+      </div>
+    </div>
+    <div class="stat-card glass" style="margin-bottom:1rem; justify-content:center;">
+      <div class="stat-icon">🎓</div>
+      <div class="stat-info"><h3>${s.totalStudentsScraped}</h3><p>Students Scraped</p></div>
+    </div>
+
+    <!-- Update Account -->
+    <div class="glass">
+      <h3 style="margin-bottom:0.8rem;">Update Account</h3>
+      <div id="profMsg" class="msg"></div>
+      <div class="form-group">
+        <label>Username</label>
+        <input id="updUser" class="input" value="${esc(u.username)}">
+      </div>
+      <div class="form-group">
+        <label>New Password (leave blank to keep current)</label>
+        <input id="updPass" type="password" class="input" placeholder="••••••••">
+      </div>
+      <button class="btn" onclick="updateProfile()">💾 Save Changes</button>
     </div>
   </div>`;
 }

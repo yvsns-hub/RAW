@@ -107,7 +107,7 @@ router.get('/:id/download', async (req, res) => {
   try {
     const job = await jobQueries.findById.get(parseInt(req.params.id));
     if (!job || Number(job.user_id) !== req.session.userId) {
-      return res.status(404).json({ error: 'Job not found.' });
+      return res.status(404).send('Job not found.');
     }
 
     let filePath = job.excel_path;
@@ -118,26 +118,37 @@ router.get('/:id/download', async (req, res) => {
     if (!fileExists) {
       const resultsData = JSON.parse(job.results_data || '[]');
       if (!resultsData.length) {
-        return res.status(404).json({ error: 'No results data available to generate Excel. The job may not have completed successfully.' });
+        return res.status(404).send('No results data available. The job may not have completed successfully.');
       }
       console.log(`📦 Regenerating Excel for job ${req.params.id} from stored data...`);
       filePath = await rebuildExcel(resultsData);
       if (!filePath) {
-        return res.status(500).json({ error: 'Failed to regenerate Excel file.' });
+        return res.status(500).send('Failed to regenerate Excel file.');
       }
       // Update the stored path so next download is faster
       await jobQueries.updateExcelPath.run(filePath, parseInt(req.params.id));
-      fileExists = true;
     }
 
-    // Serve the file with correct headers for MS Excel
-    const filename = path.basename(filePath);
+    // Send the file with correct headers so MS Excel recognizes it
+    const filename = `Results_${job.portal_name || 'RAW'}_${job.semester || ''}_${new Date().toISOString().slice(0,10)}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.sendFile(path.resolve(filePath));
+    res.setHeader('Content-Disposition', `attachment; filename="${filename.replace(/[^a-zA-Z0-9._-]/g, '_')}"`);
+    res.setHeader('Cache-Control', 'no-cache');
+
+    // Stream the file directly — avoids any encoding issues
+    const fileStream = fs.createReadStream(path.resolve(filePath));
+    fileStream.on('error', (err) => {
+      console.error('File stream error:', err);
+      if (!res.headersSent) {
+        res.status(500).send('Error reading Excel file.');
+      }
+    });
+    fileStream.pipe(res);
   } catch (err) {
     console.error('Download excel error:', err);
-    res.status(500).json({ error: 'Failed to download file.' });
+    if (!res.headersSent) {
+      res.status(500).send('Failed to download file.');
+    }
   }
 });
 
