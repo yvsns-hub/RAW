@@ -519,31 +519,40 @@ async function runPaymentScraper(options = {}) {
     onLog('🚀 Production Mode: Launching Puppeteer...');
     try {
       const fullPuppeteer = require('puppeteer');
+      const { findChrome } = require('../utils/ensure-chrome');
+      const { execSync } = require('child_process');
 
-      // Dynamically find the actual installed Chrome binary
-      // puppeteer.executablePath() can return a stale path after version updates
-      let executablePath = fullPuppeteer.executablePath();
+      // 1. Use globally cached path from startup
+      // 2. Fallback: scan cache directory
+      // 3. Last resort: install Chrome now
+      let executablePath = global.__CHROME_PATH || null;
       const cacheDir = process.env.PUPPETEER_CACHE_DIR || '/opt/render/project/src/.cache/puppeteer';
-      if (!fs.existsSync(executablePath)) {
-        onLog(`⚠️ Default Chrome path not found, scanning cache: ${cacheDir}`);
-        const chromeDirs = path.join(cacheDir, 'chrome');
-        if (fs.existsSync(chromeDirs)) {
-          const versions = fs.readdirSync(chromeDirs).filter(d => d.startsWith('linux-'));
-          if (versions.length > 0) {
-            // Use the latest version directory
-            versions.sort();
-            const latest = versions[versions.length - 1];
-            const candidate = path.join(chromeDirs, latest, 'chrome-linux64', 'chrome');
-            if (fs.existsSync(candidate)) {
-              executablePath = candidate;
-              onLog(`✅ Found Chrome at: ${executablePath}`);
-            }
+
+      if (!executablePath || !fs.existsSync(executablePath)) {
+        onLog('⚠️ Global Chrome path not set, scanning cache...');
+        executablePath = findChrome(cacheDir);
+      }
+
+      if (!executablePath) {
+        onLog('📦 Chrome not found — installing now (this may take ~30s)...');
+        try {
+          execSync('npx puppeteer browsers install chrome', {
+            env: { ...process.env, PUPPETEER_CACHE_DIR: cacheDir },
+            stdio: 'pipe',
+            timeout: 120000,
+          });
+          executablePath = findChrome(cacheDir);
+          if (executablePath) {
+            global.__CHROME_PATH = executablePath;
+            onLog(`✅ Chrome installed at: ${executablePath}`);
           }
+        } catch (installErr) {
+          onLog(`❌ Chrome install failed: ${installErr.message}`);
         }
       }
 
-      if (!fs.existsSync(executablePath)) {
-        throw new Error(`Chrome not found. Checked: ${executablePath}. Try redeploying with a clean build.`);
+      if (!executablePath) {
+        throw new Error('Chrome could not be found or installed. Try redeploying with "Clear build cache & deploy" on Render.');
       }
 
       onLog(`📍 Chrome path: ${executablePath}`);

@@ -15,7 +15,11 @@ const { runScraper } = require('./results/scraper-engine');
 const { runPaymentScraper } = require('./results/payment-scraper');
 const { updateGoogleSheet } = require('./results/google-sheets');
 const { initDB, client, jobQueries, paymentJobQueries, portalQueries, userQueries, seedKIETPortal } = require('./db/database');
+const { ensureChrome } = require('./utils/ensure-chrome');
 const bcrypt = require('bcryptjs');
+
+// Global Chrome path — set at startup, used by scrapers
+global.__CHROME_PATH = null;
 
 const app    = express();
 const server = http.createServer(app);
@@ -467,13 +471,22 @@ const PORT = process.env.PORT || 3000;
     await initDB();
     console.log('✅ Database initialized');
 
-    // 2. Start Server
+    // 2. Ensure Chrome is installed (self-healing for Render)
+    try {
+      global.__CHROME_PATH = await ensureChrome();
+    } catch (chromeErr) {
+      console.error('⚠️ Chrome setup warning:', chromeErr.message);
+      console.error('   Scraper jobs will attempt to install Chrome on first run.');
+    }
+
+    // 3. Start Server
     server.listen(PORT, () => {
       console.log('');
       console.log('╔══════════════════════════════════════════════════╗');
       console.log('║   🎓 RAW (Results Automation Website)           ║');
       console.log('╠══════════════════════════════════════════════════╣');
       console.log(`║   🌐 Listening on port ${PORT}                    ║`);
+      console.log(`║   🌐 Chrome: ${global.__CHROME_PATH ? '✅ Ready' : '⚠️ Not found'}               ║`);
       console.log('║   📊 Turso Cloud DB (if configured)             ║');
       console.log('╚══════════════════════════════════════════════════╝');
       console.log('');
