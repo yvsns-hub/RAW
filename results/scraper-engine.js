@@ -411,7 +411,33 @@ async function runScraper(options = {}) {
     onLog('🚀 Production Mode: Launching Puppeteer (pre-installed Chrome)...');
     try {
       const fullPuppeteer = require('puppeteer');
-      const executablePath = fullPuppeteer.executablePath();
+
+      // Dynamically find the actual installed Chrome binary
+      // puppeteer.executablePath() can return a stale path after version updates
+      let executablePath = fullPuppeteer.executablePath();
+      const cacheDir = process.env.PUPPETEER_CACHE_DIR || '/opt/render/project/src/.cache/puppeteer';
+      if (!fs.existsSync(executablePath)) {
+        onLog(`⚠️ Default Chrome path not found, scanning cache: ${cacheDir}`);
+        const chromeDirs = path.join(cacheDir, 'chrome');
+        if (fs.existsSync(chromeDirs)) {
+          const versions = fs.readdirSync(chromeDirs).filter(d => d.startsWith('linux-'));
+          if (versions.length > 0) {
+            // Use the latest version directory
+            versions.sort();
+            const latest = versions[versions.length - 1];
+            const candidate = path.join(chromeDirs, latest, 'chrome-linux64', 'chrome');
+            if (fs.existsSync(candidate)) {
+              executablePath = candidate;
+              onLog(`✅ Found Chrome at: ${executablePath}`);
+            }
+          }
+        }
+      }
+
+      if (!fs.existsSync(executablePath)) {
+        throw new Error(`Chrome not found. Checked: ${executablePath}. Try redeploying with a clean build.`);
+      }
+
       onLog(`📍 Chrome path: ${executablePath}`);
 
       browser = await fullPuppeteer.launch({
