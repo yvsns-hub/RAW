@@ -5,6 +5,7 @@
 const socket = io();
 let currentUser = null;
 let currentJobId = null; // tracks the active job for progress page
+let currentPaymentJobId = null; // tracks active payment job
 
 // ─── Theme & Intro Logic ───
 function applyTheme(theme) {
@@ -30,7 +31,8 @@ function updateNav() {
       : '';
     navLinks.innerHTML = `
       ${adminBtn}
-      <a onclick="navigate('portals')" style="cursor:pointer;">\uD83C\uDFEB Portals</a>
+      <a onclick="navigate('portals')" style="cursor:pointer;">🏫 Portals</a>
+      <a onclick="navigate('messbill')" style="cursor:pointer;">💰 Mess Bill</a>
     `;
     navActions.innerHTML = `
       <div style="display:flex; align-items:center; gap:0.5rem; margin-right:0.5rem;">
@@ -124,6 +126,10 @@ const routes = {
   privacy: renderPrivacy,
   terms: renderTerms,
   disclaimer: renderDisclaimer,
+  messbill: renderMessBillDashboard,
+  'messbill-new': renderMessBillWizard,
+  'messbill-progress': (app) => renderMessBillProgress(app, currentPaymentJobId, {}),
+  'messbill-history': renderMessBillHistory,
 };
 
 function navigate(page, params = {}) {
@@ -1578,6 +1584,469 @@ async function injectAds() {
 }
 
 
+
+// ════════════════════════════════════════════════════════
+//  MESS BILL SECTION
+// ════════════════════════════════════════════════════════
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+async function renderMessBillDashboard(app) {
+  app.innerHTML = `
+  <div class="fade-in">
+    <div class="page-header">
+      <div>
+        <h2>💰 Mess Bill Data Portal</h2>
+        <p style="color:var(--color-muted)">Automate hostel mess bill payment data collection</p>
+      </div>
+      <div style="display:flex;gap:0.5rem;">
+        <button class="btn btn-outline" onclick="navigate('dashboard')">← Dashboard</button>
+        <button class="btn" onclick="navigate('messbill-new')">🚀 New Collection</button>
+      </div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card glass"><div class="stat-icon">📋</div><div class="stat-info"><h3 id="mbJobs">—</h3><p>Total Jobs</p></div></div>
+      <div class="stat-card glass"><div class="stat-icon">✅</div><div class="stat-info"><h3 id="mbPaid">—</h3><p>Paid</p></div></div>
+      <div class="stat-card glass"><div class="stat-icon">❌</div><div class="stat-info"><h3 id="mbNotPaid">—</h3><p>Not Paid</p></div></div>
+    </div>
+    <div class="section-title">Recent Jobs</div>
+    <div id="mbRecent" class="glass" style="min-height:80px;padding:1rem;"><p style="color:var(--color-muted)">Loading...</p></div>
+    <div style="display:flex;gap:1rem;margin-top:1.5rem;">
+      <button class="btn btn-full btn-lg" onclick="navigate('messbill-new')">🚀 Start New Collection</button>
+      <button class="btn btn-full btn-lg btn-outline" onclick="navigate('messbill-history')">📂 View History</button>
+    </div>
+
+    <div class="section-title" style="margin-top:2rem;">📄 Google Sheets Auto-Update</div>
+    <div id="mbGoogleConfig" class="glass" style="padding:1.2rem;">
+      <div id="gsMsg" class="msg"></div>
+      <p style="color:var(--color-muted);font-size:0.88rem;margin-bottom:1rem;">
+        Connect a Google Sheet so paid data is <strong>automatically filled</strong> after each job completes.
+        No API keys needed — uses a simple Apps Script deployed from your sheet.
+      </p>
+      <div class="form-group">
+        <label>Apps Script Web App URL</label>
+        <input id="gsScriptUrl" class="input" type="url" placeholder="https://script.google.com/macros/s/xxxxx/exec" style="font-family:var(--font-mono);font-size:0.82rem;"/>
+      </div>
+      <div style="display:flex;gap:0.5rem;margin-bottom:1rem;">
+        <button class="btn" onclick="saveGsConfig()">💾 Save URL</button>
+        <button class="btn btn-outline" onclick="toggleGsSetup()">📋 Setup Guide</button>
+      </div>
+      <div id="gsSetupGuide" style="display:none; margin-top:1rem; background:rgba(255,255,255,0.03); padding:1rem; border-radius:8px; border:1px solid rgba(255,255,255,0.08);">
+        <h4 style="color:var(--color-primary);margin-bottom:0.8rem;">One-Time Setup (5 minutes)</h4>
+        <ol style="color:var(--color-muted);font-size:0.85rem;line-height:1.7;padding-left:1.2rem;">
+          <li>Open your Google Sheet → click <strong>Extensions → Apps Script</strong></li>
+          <li>Delete any existing code in the editor</li>
+          <li>Click the <strong>"Copy Script"</strong> button below and paste it</li>
+          <li>Click <strong>Deploy → New Deployment</strong></li>
+          <li>Select type: <strong>Web app</strong></li>
+          <li>Set "Execute as": <strong>Me</strong></li>
+          <li>Set "Who has access": <strong>Anyone</strong></li>
+          <li>Click <strong>Deploy</strong> → Authorize when prompted</li>
+          <li>Copy the <strong>Web App URL</strong> and paste it above</li>
+        </ol>
+        <button class="btn btn-outline" onclick="copyAppsScript()" style="margin-top:0.8rem;">📋 Copy Script Code</button>
+        <span id="gsCopyStatus" style="margin-left:0.5rem;font-size:0.82rem;color:var(--color-success);display:none;">✅ Copied!</span>
+      </div>
+    </div>
+  </div>`;
+  const data = await api('GET','/api/payment-jobs');
+  const jobs = data.jobs||[];
+  document.getElementById('mbJobs').textContent = jobs.length;
+  document.getElementById('mbPaid').textContent = jobs.reduce((s,j)=>s+(j.paid_count||0),0);
+  document.getElementById('mbNotPaid').textContent = jobs.reduce((s,j)=>s+(j.not_paid_count||0),0);
+  const div = document.getElementById('mbRecent');
+  if(!jobs.length){ div.innerHTML=`<p style="color:var(--color-muted);text-align:center">No jobs yet. <a href="#/messbill-new">Create one.</a></p>`; }
+  else { div.innerHTML=`<table><thead><tr><th>Date</th><th>Month</th><th>Students</th><th>Paid</th><th>Not Paid</th><th>Status</th><th>Action</th></tr></thead><tbody>${jobs.slice(0,5).map(j=>`<tr><td>${fmtDate(j.created_at)}</td><td>${j.target_month}/${j.target_year}</td><td>${j.total_students}</td><td style="color:var(--color-success);font-weight:600">${j.paid_count}</td><td style="color:var(--color-error)">${j.not_paid_count}</td><td><span class="badge ${j.status==='completed'?'success':j.status==='failed'?'error':'warning'}">${j.status}</span></td><td>${j.status==='completed'?`<a href="/api/payment-jobs/${j.id}/download" class="btn btn-outline" style="padding:0.2rem 0.6rem;font-size:0.8rem;">⬇ Excel</a>`:'—'}</td></tr>`).join('')}</tbody></table>`; }
+  // Load Google config
+  const gsData = await api('GET','/api/payment-jobs/google-config');
+  if(gsData.appsScriptUrl) document.getElementById('gsScriptUrl').value = gsData.appsScriptUrl;
+}
+
+async function saveGsConfig(){
+  const url = document.getElementById('gsScriptUrl').value.trim();
+  const msg = document.getElementById('gsMsg');
+  showMsg(msg,'Saving...','info');
+  const res = await api('POST','/api/payment-jobs/google-config',{appsScriptUrl:url});
+  if(res.error) showMsg(msg,res.error,'error');
+  else showMsg(msg,url?'✅ Apps Script URL saved! Sheet will auto-update after jobs.':'✅ Cleared. Sheet auto-update disabled.','success');
+}
+
+function toggleGsSetup(){
+  const el=document.getElementById('gsSetupGuide');
+  el.style.display=el.style.display==='none'?'block':'none';
+}
+
+async function copyAppsScript(){
+  const res=await api('GET','/api/payment-jobs/apps-script-code');
+  if(res.code){
+    navigator.clipboard.writeText(res.code).then(()=>{
+      const s=document.getElementById('gsCopyStatus');
+      s.style.display='inline';
+      setTimeout(()=>s.style.display='none',3000);
+    }).catch(()=>alert('Copy failed. Check browser permissions.'));
+  }
+}
+
+// ─── Mess Bill Wizard ───
+const mbWizard = { step:1, students:[], month:'', year:'', sheetLink:'' };
+
+async function renderMessBillWizard(app) {
+  app.innerHTML = `
+  <div class="fade-in">
+    <div class="page-header">
+      <div><h2>🚀 New Mess Bill Collection</h2><p style="color:var(--color-muted)">Collect payment data from KIET BillDesk</p></div>
+      <button class="btn btn-outline" onclick="navigate('messbill')">← Back</button>
+    </div>
+    <div class="wizard-steps">
+      <div class="wizard-step" id="mbStep1">1. Students</div>
+      <div class="wizard-sep">›</div>
+      <div class="wizard-step" id="mbStep2">2. Sheet Link</div>
+      <div class="wizard-sep">›</div>
+      <div class="wizard-step" id="mbStep3">3. Month</div>
+      <div class="wizard-sep">›</div>
+      <div class="wizard-step" id="mbStep4">4. Review</div>
+    </div>
+    <div id="mbWizBody" class="glass" style="padding:1.5rem;"></div>
+  </div>`;
+  mbWizard.step=1; mbWizard.students=[]; mbWizard.month=''; mbWizard.year=''; mbWizard.sheetLink='';
+  renderMbStep();
+}
+
+function updateMbSteps(){for(let i=1;i<=4;i++){const el=document.getElementById(`mbStep${i}`);if(el)el.className='wizard-step'+(i<mbWizard.step?' done':i===mbWizard.step?' active':'');}}
+
+function renderMbStep(){
+  updateMbSteps();
+  const body=document.getElementById('mbWizBody');
+  if(mbWizard.step===1) renderMbStep1(body);
+  else if(mbWizard.step===2) renderMbStep2_SheetLink(body);
+  else if(mbWizard.step===3) renderMbStep3_Month(body);
+  else if(mbWizard.step===4) renderMbStep4_Review(body);
+}
+
+function renderMbStep1(body){
+  body.innerHTML=`
+  <h3 style="margin-bottom:1rem;">Enter Student Data</h3>
+  <div id="mbMsg" class="msg"></div>
+  <p style="color:var(--color-muted);margin-bottom:0.5rem;">Paste student data (one per line).<br/>Format: <code style="background:rgba(255,255,255,0.06);padding:0.1rem 0.4rem;border-radius:4px;">SNO, ROOM_NO, ROLL_NO, NAME</code></p>
+  <textarea id="mbInput" class="input" rows="12" style="font-family:var(--font-mono);font-size:0.85rem;resize:vertical;"
+  placeholder="1,DH201,23B21A45B0,Tamarana Pavan Kumar
+2,DH201,23B21A45A6,MANDADI NAGARATNAKAR
+3,DH202A,23B21A4359,KAMUJU MANI DILEEP">${mbWizard.students.length?mbWizard.students.map(s=>`${s.sno||''},${s.roomNo||''},${s.rollNo},${s.name||''}`).join('\n'):''}</textarea>
+  <p id="mbCount" style="color:var(--color-muted);font-size:0.85rem;margin-top:0.5rem;">0 students</p>
+  <div style="margin-top:1.5rem;"><button class="btn" onclick="mbNext1()">Next →</button></div>`;
+  const ta=document.getElementById('mbInput');
+  ta.addEventListener('input',()=>{const lines=ta.value.split('\n').filter(l=>l.trim());document.getElementById('mbCount').textContent=`${lines.length} student${lines.length===1?'':'s'}`;});
+  if(mbWizard.students.length) ta.dispatchEvent(new Event('input'));
+}
+
+function mbNext1(){
+  const raw=document.getElementById('mbInput').value.trim();
+  const msg=document.getElementById('mbMsg');
+  if(!raw){showMsg(msg,'Please enter student data','error');return;}
+  const lines=raw.split('\n').map(l=>l.trim()).filter(Boolean);
+  const students=[];
+  for(const line of lines){
+    if(line.startsWith('{'))continue;
+    let parts;
+    if(line.includes('\t')) parts=line.split('\t');
+    else if(line.includes(',')) parts=line.split(',');
+    else parts=line.split(/\s+/);
+    if(parts.length>=3){
+      const sno=parts[0].trim();
+      const roomNo=parts[1].trim();
+      const rollNo=parts[2].trim();
+      const name=parts.slice(3).join(' ').trim()||rollNo;
+      if(rollNo.match(/[A-Z0-9]{5,}/i)) students.push({sno,roomNo,rollNo,name});
+    } else if(parts.length>=1){
+      const rollNo=parts[0].trim();
+      if(rollNo.match(/[A-Z0-9]{5,}/i)) students.push({sno:'',roomNo:'',rollNo,name:rollNo});
+    }
+  }
+  if(!students.length){showMsg(msg,'No valid students found','error');return;}
+  mbWizard.students=students;
+  mbWizard.step=2;
+  renderMbStep();
+}
+
+// Step 2: Sheet Link (optional Excel/Google Sheets URL)
+function renderMbStep2_SheetLink(body){
+  body.innerHTML=`
+  <h3 style="margin-bottom:1rem;">📄 Excel Sheet Link <span style="font-size:0.8rem;color:var(--color-muted);font-weight:400;">(Optional)</span></h3>
+  <div id="mbMsg" class="msg"></div>
+  <p style="color:var(--color-muted);margin-bottom:0.5rem;">Paste a Google Sheets or Excel link that has roll numbers.<br/>
+  The sheet will be recreated in the output with <strong>only paid students' data filled in</strong>.</p>
+  <div class="form-group">
+    <label>Sheet Link (Google Sheets URL)</label>
+    <input id="mbSheetLink" class="input" type="url" value="${esc(mbWizard.sheetLink||'')}" placeholder="https://docs.google.com/spreadsheets/d/xxxxx/edit" style="font-family:var(--font-mono);font-size:0.85rem;"/>
+  </div>
+  <div style="background:rgba(255,255,255,0.04);padding:0.8rem 1rem;border-radius:8px;margin-top:0.5rem;border:1px solid rgba(255,255,255,0.08);">
+    <p style="font-size:0.82rem;color:var(--color-muted);margin:0;">💡 <strong>How it works:</strong> If provided, Sheet 3 in the output Excel will mirror this sheet's structure and fill payment data for students who have paid the mess bill.</p>
+  </div>
+  <div style="margin-top:1.5rem;display:flex;gap:1rem;">
+    <button class="btn btn-outline" onclick="mbWizard.step=1;renderMbStep();">← Back</button>
+    <button class="btn" onclick="mbNextSheetLink()">Next →</button>
+  </div>`;
+}
+
+function mbNextSheetLink(){
+  mbWizard.sheetLink=(document.getElementById('mbSheetLink').value||'').trim();
+  mbWizard.step=3;
+  renderMbStep();
+}
+
+// Step 3: Month/Year selection
+function renderMbStep3_Month(body){
+  const curYear=new Date().getFullYear();
+  const years=[curYear-1,curYear,curYear+1];
+  body.innerHTML=`
+  <h3 style="margin-bottom:1rem;">Select Target Month & Year</h3>
+  <div id="mbMsg" class="msg"></div>
+  <p style="color:var(--color-muted);margin-bottom:1rem;">${mbWizard.students.length} students loaded</p>
+  <div class="form-group"><label>Month</label>
+    <select id="mbMonth" class="input">${MONTH_NAMES.map((m,i)=>`<option value="${i+1}" ${mbWizard.month===(i+1).toString()?'selected':''}>${m}</option>`).join('')}</select>
+  </div>
+  <div class="form-group"><label>Year</label>
+    <select id="mbYear" class="input">${years.map(y=>`<option value="${y}" ${mbWizard.year===y.toString()||(!mbWizard.year&&y===curYear)?'selected':''}>${y}</option>`).join('')}</select>
+  </div>
+  <div style="margin-top:1.5rem;display:flex;gap:1rem;">
+    <button class="btn btn-outline" onclick="mbWizard.step=2;renderMbStep();">← Back</button>
+    <button class="btn" onclick="mbNextMonth()">Next →</button>
+  </div>`;
+}
+
+function mbNextMonth(){
+  mbWizard.month=document.getElementById('mbMonth').value;
+  mbWizard.year=document.getElementById('mbYear').value;
+  mbWizard.step=4;
+  renderMbStep();
+}
+
+// Step 4: Review & Start
+function renderMbStep4_Review(body){
+  const monthName=MONTH_NAMES[parseInt(mbWizard.month)-1]||mbWizard.month;
+  body.innerHTML=`
+  <h3 style="margin-bottom:1rem;">Review & Start</h3>
+  <div class="review-grid">
+    <div class="review-item"><div class="review-label">Students</div><div class="review-value">${mbWizard.students.length}</div></div>
+    <div class="review-item"><div class="review-label">Target Month</div><div class="review-value">${monthName} ${mbWizard.year}</div></div>
+    <div class="review-item"><div class="review-label">Portal</div><div class="review-value">KIET BillDesk (Hostel)</div></div>
+    <div class="review-item"><div class="review-label">Sheet Link</div><div class="review-value" style="font-size:0.8rem;word-break:break-all;">${mbWizard.sheetLink ? '✅ ' + esc(mbWizard.sheetLink.substring(0,60)) + (mbWizard.sheetLink.length>60?'...':'') : '<span style="color:var(--color-muted)">None provided</span>'}</div></div>
+  </div>
+  <div class="glass" style="margin-top:1rem;padding:1rem;max-height:150px;overflow-y:auto;">
+    <small style="color:var(--color-muted)">Students preview:</small>
+    ${mbWizard.students.slice(0,8).map(s=>`<div style="font-size:0.85rem;color:var(--color-text);">${esc(s.sno)} | ${esc(s.roomNo)} | ${esc(s.rollNo)} — ${esc(s.name)}</div>`).join('')}
+    ${mbWizard.students.length>8?`<div style="color:var(--color-muted);font-size:0.85rem;">...and ${mbWizard.students.length-8} more</div>`:''}
+  </div>
+  <div id="mbMsg" class="msg"></div>
+  <div style="margin-top:1.5rem;display:flex;gap:1rem;">
+    <button class="btn btn-outline" onclick="mbWizard.step=3;renderMbStep();">← Back</button>
+    <button class="btn btn-lg" id="mbStartBtn" onclick="mbStartJob()">🚀 Start Collection</button>
+  </div>`;
+}
+
+async function mbStartJob(){
+  const msg=document.getElementById('mbMsg');
+  const btn=document.getElementById('mbStartBtn');
+  btn.disabled=true; btn.textContent='⏳ Creating job...';
+  showMsg(msg,'Setting up job...','info');
+  socket.emit('job:auth');
+  const payload = {
+    students: mbWizard.students,
+    target_month: mbWizard.month,
+    target_year: mbWizard.year,
+    sheet_link: mbWizard.sheetLink || '',
+  };
+  const res=await api('POST','/api/payment-jobs', payload);
+  if(res.error){showMsg(msg,res.error,'error');btn.disabled=false;btn.textContent='🚀 Start Collection';return;}
+  currentPaymentJobId=res.jobId;
+  window.location.hash='#/messbill-progress';
+}
+
+// ─── Mess Bill Progress Page ───
+function renderMessBillProgress(app, jobId){
+  app.innerHTML=`
+  <div class="fade-in">
+    <div class="page-header">
+      <div><h2>💰 Mess Bill Progress</h2><p style="color:var(--color-muted)">Live collection</p></div>
+      <div style="display:flex;gap:0.5rem;">
+        <button class="btn btn-outline" id="mbPauseBtn" onclick="mbTogglePause()" style="display:none;">⏸ Pause</button>
+        <button class="btn btn-outline" onclick="navigate('messbill-history')">📂 History</button>
+      </div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card glass"><div class="stat-icon">🎓</div><div class="stat-info"><h3 id="mbpTotal">—</h3><p>Total</p></div></div>
+      <div class="stat-card glass"><div class="stat-icon">✅</div><div class="stat-info"><h3 id="mbpDone">0</h3><p>Done</p></div></div>
+      <div class="stat-card glass"><div class="stat-icon">⏱</div><div class="stat-info"><h3 id="mbpETA">—</h3><p>ETA</p></div></div>
+    </div>
+    <div class="glass" style="padding:1.5rem;margin-bottom:1rem;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+        <span id="mbpPhase" style="font-weight:600;color:var(--color-primary)">Starting...</span>
+        <span id="mbpPct">0%</span>
+      </div>
+      <div class="progress-bar"><div class="fill" id="mbpBar" style="width:0%"></div></div>
+      <p id="mbpCurrent" style="margin-top:0.5rem;font-size:0.85rem;color:var(--color-muted)">Waiting...</p>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+      <div class="glass" style="padding:1rem;">
+        <h4 style="margin-bottom:0.5rem;">Live Results</h4>
+        <div style="overflow-y:auto;max-height:280px;">
+          <table><thead><tr><th>#</th><th>Roll No</th><th>Status</th><th>Amount</th></tr></thead><tbody id="mbLiveResults"></tbody></table>
+        </div>
+      </div>
+      <div class="glass" style="padding:1rem;">
+        <h4 style="margin-bottom:0.5rem;">Console Log</h4>
+        <div id="mbLiveLog" style="overflow-y:auto;max-height:280px;font-family:var(--font-mono);font-size:0.78rem;color:var(--color-muted);"></div>
+      </div>
+    </div>
+    <div id="mbCompleteSummary" style="display:none;margin-top:1rem;" class="glass">
+      <h3 style="color:var(--color-success);">✅ Collection Complete!</h3>
+      <div class="stats-grid" style="margin-top:1rem;">
+        <div class="stat-card glass"><div class="stat-icon">📋</div><div class="stat-info"><h3 id="mbsTotal">—</h3><p>Total</p></div></div>
+        <div class="stat-card glass"><div class="stat-icon">✅</div><div class="stat-info"><h3 id="mbsPaid">—</h3><p>Paid</p></div></div>
+        <div class="stat-card glass"><div class="stat-icon">❌</div><div class="stat-info"><h3 id="mbsNotPaid">—</h3><p>Not Paid</p></div></div>
+        <div class="stat-card glass"><div class="stat-icon">⚠️</div><div class="stat-info"><h3 id="mbsErr">—</h3><p>Errors</p></div></div>
+        <div class="stat-card glass"><div class="stat-icon">⏱</div><div class="stat-info"><h3 id="mbsElapsed">—</h3><p>Time Taken</p></div></div>
+        <div class="stat-card glass"><div class="stat-icon">📄</div><div class="stat-info"><h3 id="mbsSheet">—</h3><p>Sheet Update</p></div></div>
+      </div>
+      <div style="margin-top:1rem;display:flex;gap:1rem;">
+        <a id="mbDlBtn" href="#" class="btn" style="display:none;">⬇ Download Excel</a>
+        <button class="btn btn-outline" onclick="navigate('messbill')">← Mess Bill</button>
+      </div>
+    </div>
+  </div>`;
+
+  // Clear old listeners
+  socket.off('payment:started');socket.off('payment:progress');socket.off('payment:student-done');
+  socket.off('payment:log');socket.off('payment:complete');socket.off('payment:error');
+  socket.off('payment:paused');socket.off('payment:resumed');socket.off('payment:reconnect-data');
+
+  window._mbPaused=false;
+
+  function showMbPause(paused){
+    const btn=document.getElementById('mbPauseBtn');if(!btn)return;
+    btn.style.display='';window._mbPaused=paused;
+    btn.textContent=paused?'▶ Resume':'⏸ Pause';
+  }
+
+  socket.once('job:auth-ok',()=>{socket.emit('payment:reconnect',{jobId});});
+  socket.emit('job:auth');
+
+  socket.once('payment:reconnect-data',(d)=>{
+    if(d.running){
+      if(d.total) document.getElementById('mbpTotal').textContent=d.total;
+      showMbPause(d.paused);
+      const tbody=document.getElementById('mbLiveResults');tbody.innerHTML='';
+      (d.results||[]).forEach(r=>{
+        const sc=r.status==='PAID'?'success':r.status==='NOT_PAID'?'error':'warning';
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td>${r.index+1}</td><td><strong>${esc(r.rollNo)}</strong></td><td><span class="badge ${sc}">${r.status}</span></td><td>${r.amounts||'—'}</td>`;
+        tbody.insertBefore(tr,tbody.firstChild);
+      });
+      document.getElementById('mbpDone').textContent=(d.results||[]).length;
+      const log=document.getElementById('mbLiveLog');log.innerHTML='';
+      (d.logs||[]).forEach(l=>{const div=document.createElement('div');div.textContent=`[${new Date(l.time).toLocaleTimeString()}] ${l.message}`;log.appendChild(div);});
+      log.scrollTop=log.scrollHeight;
+      window._mbReconnect=true;
+    } else { window._mbReconnect=true; socket.emit('payment:start',{jobId}); }
+  });
+
+  setTimeout(()=>{if(!window._mbReconnect){socket.emit('payment:start',{jobId});}},2000);
+
+  socket.on('payment:paused',d=>{if(d.jobId==jobId)showMbPause(true);});
+  socket.on('payment:resumed',d=>{if(d.jobId==jobId)showMbPause(false);});
+  socket.on('payment:started',d=>{if(d.jobId==jobId){document.getElementById('mbpTotal').textContent=d.total;showMbPause(false);}});
+
+  socket.on('payment:progress',d=>{
+    if(d.jobId!=jobId)return;
+    const phases={launching:'🚀 Launching',running:'💰 Collecting',paused:'⏸ Paused',generating:'📊 Building Excel',done:'✅ Complete'};
+    document.getElementById('mbpPhase').textContent=phases[d.phase]||d.phase;
+    document.getElementById('mbpPct').textContent=d.percentage+'%';
+    document.getElementById('mbpBar').style.width=d.percentage+'%';
+    if(d.eta!==undefined)document.getElementById('mbpETA').textContent=d.eta;
+    document.getElementById('mbpDone').textContent=d.current||0;
+    document.getElementById('mbpTotal').textContent=d.total||'?';
+    if(d.currentStudent) document.getElementById('mbpCurrent').textContent='▶ '+d.currentStudent.rollNo+' — '+(d.currentStudent.name||'');
+  });
+
+  socket.on('payment:student-done',d=>{
+    if(d.jobId!=jobId)return;
+    const tbody=document.getElementById('mbLiveResults');
+    const sc=d.status==='PAID'?'success':d.status==='NOT_PAID'?'error':'warning';
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${d.index+1}</td><td><strong>${esc(d.rollNo)}</strong>${d.rollNoMismatch?'<span style="color:var(--color-warning);font-size:0.75rem;"> ⚠️ MISMATCH</span>':''}</td><td><span class="badge ${sc}">${d.status==='MISMATCH'?'⚠️ MISMATCH':d.status}</span></td><td>${d.amounts||'—'}</td>`;
+    tbody.insertBefore(tr,tbody.firstChild);
+    document.getElementById('mbpDone').textContent=d.index+1;
+  });
+
+  socket.on('payment:log',d=>{
+    if(d.jobId!=jobId)return;
+    const log=document.getElementById('mbLiveLog');
+    const div=document.createElement('div');div.textContent=`[${new Date(d.time).toLocaleTimeString()}] ${d.message}`;
+    log.appendChild(div);log.scrollTop=log.scrollHeight;
+  });
+
+  socket.on('payment:complete',d=>{
+    if(d.jobId!=jobId)return;
+    const pb=document.getElementById('mbPauseBtn');if(pb)pb.style.display='none';
+    document.getElementById('mbpPhase').textContent='✅ Complete';
+    document.getElementById('mbpPct').textContent='100%';
+    document.getElementById('mbpBar').style.width='100%';
+    document.getElementById('mbpETA').textContent='—';
+    document.getElementById('mbpCurrent').textContent='Collection complete!';
+    document.getElementById('mbCompleteSummary').style.display='block';
+    document.getElementById('mbsTotal').textContent=d.total;
+    document.getElementById('mbsPaid').textContent=d.paid;
+    document.getElementById('mbsNotPaid').textContent=d.notPaid;
+    document.getElementById('mbsErr').textContent=d.errors;
+    document.getElementById('mbsElapsed').textContent=d.elapsed||'—';
+    // Google Sheets update status
+    const sheetEl=document.getElementById('mbsSheet');
+    if(d.sheetUpdated){
+      sheetEl.textContent=`✅ ${d.sheetFilled||0} filled`;
+      sheetEl.style.color='var(--color-success)';
+    } else {
+      sheetEl.textContent='Not linked';
+      sheetEl.style.color='var(--color-muted)';
+    }
+    if(d.excelFile){const dl=document.getElementById('mbDlBtn');dl.href=`/api/payment-jobs/${jobId}/download`;dl.style.display='';}
+  });
+
+  socket.on('payment:error',d=>{
+    document.getElementById('mbpPhase').textContent='❌ Error';
+    document.getElementById('mbpCurrent').textContent=typeof d==='string'?d:(d.message||'Unknown error');
+  });
+}
+
+function mbTogglePause(){
+  if(!currentPaymentJobId)return;
+  if(window._mbPaused) socket.emit('payment:resume',{jobId:currentPaymentJobId});
+  else socket.emit('payment:pause',{jobId:currentPaymentJobId});
+}
+
+// ─── Mess Bill History ───
+async function renderMessBillHistory(app){
+  app.innerHTML=`
+  <div class="fade-in">
+    <div class="page-header">
+      <div><h2>📂 Mess Bill History</h2><p style="color:var(--color-muted)">Past collection jobs</p></div>
+      <div><button class="btn btn-outline" onclick="navigate('messbill')">← Back</button><button class="btn" onclick="navigate('messbill-new')" style="margin-left:0.5rem;">🚀 New</button></div>
+    </div>
+    <div id="mbHistTable" class="glass" style="padding:1rem;overflow-x:auto;"><p style="color:var(--color-muted)">Loading...</p></div>
+  </div>`;
+  const data=await api('GET','/api/payment-jobs');
+  const jobs=data.jobs||[];
+  const div=document.getElementById('mbHistTable');
+  if(!jobs.length){div.innerHTML=`<p style="color:var(--color-muted);text-align:center;padding:2rem;">No jobs yet.</p>`;}
+  else{div.innerHTML=`<table><thead><tr><th>#</th><th>Date</th><th>Month</th><th>Total</th><th>Paid</th><th>Not Paid</th><th>Err</th><th>Status</th><th>Excel</th><th>Del</th></tr></thead><tbody>${jobs.map((j,i)=>`<tr id="mbJobRow_${j.id}"><td>${i+1}</td><td style="white-space:nowrap">${fmtDate(j.created_at)}</td><td>${j.target_month}/${j.target_year}</td><td>${j.total_students}</td><td style="color:var(--color-success);font-weight:600">${j.paid_count}</td><td style="color:var(--color-error)">${j.not_paid_count}</td><td>${j.error_count}</td><td><span class="badge ${j.status==='completed'?'success':j.status==='failed'?'error':'warning'}">${j.status}</span></td><td>${j.status==='completed'?`<a href="/api/payment-jobs/${j.id}/download" class="btn btn-outline" style="padding:0.2rem 0.6rem;font-size:0.8rem;">⬇ Excel</a>`:'—'}</td><td><button onclick="deleteMbJob(${j.id})" style="background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--color-error);">🗑</button></td></tr>`).join('')}</tbody></table>`;}
+}
+
+async function deleteMbJob(id){
+  if(!confirm('Delete this job?'))return;
+  const res=await api('DELETE',`/api/payment-jobs/${id}`);
+  if(res.error){alert('Failed: '+res.error);return;}
+  const row=document.getElementById(`mbJobRow_${id}`);
+  if(row){row.style.transition='opacity 0.3s';row.style.opacity='0';}
+  setTimeout(()=>{if(row)row.remove();},300);
+}
 
 // ════════════════════════════════════════════════════════
 //  HELPERS

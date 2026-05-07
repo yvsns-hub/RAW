@@ -76,6 +76,27 @@ async function initDB() {
       value TEXT,
       updated_at TEXT DEFAULT (datetime('now'))
     )`,
+    `CREATE TABLE IF NOT EXISTS payment_jobs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      target_month TEXT DEFAULT '',
+      target_year TEXT DEFAULT '',
+      status TEXT DEFAULT 'pending',
+      total_students INTEGER DEFAULT 0,
+      completed_students INTEGER DEFAULT 0,
+      paid_count INTEGER DEFAULT 0,
+      not_paid_count INTEGER DEFAULT 0,
+      error_count INTEGER DEFAULT 0,
+      mismatch_count INTEGER DEFAULT 0,
+      students_input TEXT DEFAULT '[]',
+      results_data TEXT DEFAULT '[]',
+      excel_path TEXT DEFAULT '',
+      sheet_link TEXT DEFAULT '',
+      elapsed TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now')),
+      completed_at TEXT,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )`,
     `INSERT OR IGNORE INTO settings (key, value) VALUES ('adsense_enabled', 'false')`,
     `INSERT OR IGNORE INTO settings (key, value) VALUES ('adsense_script', '')`
   ], "write");
@@ -90,6 +111,9 @@ async function initDB() {
     await client.execute(`UPDATE portals SET password_selector = '#MainContent_Password' WHERE password_selector IN ('#password', '', NULL)`);
     await client.execute(`UPDATE portals SET submit_selector = 'input[type="submit"]' WHERE submit_selector IN ('input[type=submit]', '', NULL)`);
   } catch(e) {}
+
+  // Add sheet_link column if missing (migration for existing DBs)
+  try { await client.execute(`ALTER TABLE payment_jobs ADD COLUMN sheet_link TEXT DEFAULT ''`); } catch(e) {}
 }
 
 // ─── QUERY HELPERS (Async) ───
@@ -223,6 +247,56 @@ const settingsQueries = {
   }
 };
 
+const paymentJobQueries = {
+  create: {
+    run: async (userId, month, year, total, input, sheetLink) => {
+      return client.execute({
+        sql: `INSERT INTO payment_jobs (user_id, target_month, target_year, total_students, students_input, sheet_link) VALUES (?, ?, ?, ?, ?, ?)`,
+        args: [userId, month, year, total, input, sheetLink || '']
+      });
+    }
+  },
+  findByUser: {
+    all: async (userId) => {
+      const rs = await client.execute({ sql: `SELECT id, target_month, target_year, status, total_students, completed_students, paid_count, not_paid_count, error_count, mismatch_count, elapsed, excel_path, created_at, completed_at FROM payment_jobs WHERE user_id = ? ORDER BY created_at DESC LIMIT 50`, args: [userId] });
+      return rs.rows;
+    }
+  },
+  findById: {
+    get: async (id) => {
+      const rs = await client.execute({ sql: `SELECT * FROM payment_jobs WHERE id = ?`, args: [id] });
+      return rs.rows[0];
+    }
+  },
+  updateProgress: {
+    run: (completed, paid, notPaid, errors, mismatch, jobId) => client.execute({
+      sql: `UPDATE payment_jobs SET completed_students=?, paid_count=?, not_paid_count=?, error_count=?, mismatch_count=? WHERE id=?`,
+      args: [completed, paid, notPaid, errors, mismatch, jobId]
+    })
+  },
+  complete: {
+    run: (completed, paid, notPaid, errors, mismatch, data, excelPath, elapsed, jobId) => client.execute({
+      sql: `UPDATE payment_jobs SET status='completed', completed_students=?, paid_count=?, not_paid_count=?, error_count=?, mismatch_count=?, results_data=?, excel_path=?, elapsed=?, completed_at=datetime('now') WHERE id=?`,
+      args: [completed, paid, notPaid, errors, mismatch, data, excelPath, elapsed, jobId]
+    })
+  },
+  fail: {
+    run: (elapsed, jobId) => client.execute({
+      sql: `UPDATE payment_jobs SET status='failed', elapsed=?, completed_at=datetime('now') WHERE id=?`,
+      args: [elapsed, jobId]
+    })
+  },
+  deleteJob: {
+    run: (id, userId) => client.execute({ sql: `DELETE FROM payment_jobs WHERE id = ? AND user_id = ?`, args: [id, userId] })
+  },
+  updateExcelPath: {
+    run: (excelPath, jobId) => client.execute({
+      sql: `UPDATE payment_jobs SET excel_path = ? WHERE id = ?`,
+      args: [excelPath, jobId]
+    })
+  }
+};
+
 async function seedKIETPortal(userId) {
   const rs = await client.execute({ sql: `SELECT id FROM portals WHERE user_id = ? AND name = 'KIET Group of Institutions' LIMIT 1`, args: [userId] });
   if (rs.rows.length === 0) {
@@ -241,4 +315,4 @@ async function seedKIETPortal(userId) {
   }
 }
 
-module.exports = { initDB, client, userQueries, portalQueries, jobQueries, settingsQueries, seedKIETPortal };
+module.exports = { initDB, client, userQueries, portalQueries, jobQueries, paymentJobQueries, settingsQueries, seedKIETPortal };

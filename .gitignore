@@ -1,6 +1,10 @@
 node_modules/
 data/database.sqlite
+data/database.sqlite-shm
+data/database.sqlite-wal
+data/google-config.json
 output/*.xlsx
 output/*.png
+debug_page_output.txt
 .DS_Store
 .env

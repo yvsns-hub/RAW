@@ -7,11 +7,14 @@ const path       = require('path');
 const authRoutes   = require('./routes/auth');
 const portalRoutes = require('./routes/portals');
 const jobRoutes    = require('./routes/jobs');
+const paymentJobRoutes = require('./routes/payment-jobs');
 const adminRoutes  = require('./routes/admin');
 const userRoutes   = require('./routes/user');
 const publicRoutes  = require('./routes/public');
 const { runScraper } = require('./results/scraper-engine');
-const { initDB, client, jobQueries, portalQueries, userQueries, seedKIETPortal } = require('./db/database');
+const { runPaymentScraper } = require('./results/payment-scraper');
+const { updateGoogleSheet } = require('./results/google-sheets');
+const { initDB, client, jobQueries, paymentJobQueries, portalQueries, userQueries, seedKIETPortal } = require('./db/database');
 const bcrypt = require('bcryptjs');
 
 const app    = express();
@@ -32,6 +35,7 @@ app.use(express.json({ limit: '5mb' }));
 app.use('/api/auth', authRoutes);
 app.use('/api/portals', portalRoutes);
 app.use('/api/jobs', jobRoutes);
+app.use('/api/payment-jobs', paymentJobRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/public', publicRoutes);
@@ -307,6 +311,145 @@ io.on('connection', (socket) => {
       });
     } else {
       socket.emit('job:reconnect-data', { jobId, running: false });
+    }
+  });
+
+  // ─── Payment job: start ───
+  socket.on('payment:start', async (data) => {
+    const { jobId } = data;
+    if (!jobId) { socket.emit('payment:error', 'Job ID required.'); return; }
+    if (activeJobs.has(`pay_${jobId}`)) { socket.emit('payment:error', 'Job already running.'); return; }
+
+    const job = await paymentJobQueries.findById.get(jobId);
+    if (!job) { socket.emit('payment:error', 'Job not found.'); return; }
+
+    const userId = Number(job.user_id);
+    socket.join(`user:${userId}`);
+    console.log(`💰 Starting payment job ${jobId} for user ${userId}`);
+
+    const students = JSON.parse(job.students_input || '[]');
+    const startIndex = Math.max(0, Number(job.completed_students) || 0);
+    const pauseControl = { paused: false };
+    activeJobs.set(`pay_${jobId}`, { startTime: Date.now(), results: [], logs: [], pauseControl, userId, totalStudents: students.length });
+
+    const emitToClient = (event, payload) => io.to(`user:${userId}`).emit(event, payload);
+
+    emitToClient('payment:started', { jobId, total: students.length });
+
+    let paidCount = 0, notPaidCount = 0, errorCount = 0, mismatchCount = 0;
+
+    try {
+      await runPaymentScraper({
+        students,
+        targetMonth: job.target_month,
+        targetYear: job.target_year,
+        pauseControl,
+        startIndex,
+
+        onProgress: (progressData) => emitToClient('payment:progress', { jobId, ...progressData }),
+
+        onStudentDone: async (result, index) => {
+          if (result.status === 'PAID') paidCount++;
+          else if (result.status === 'NOT_PAID') notPaidCount++;
+          else errorCount++;
+          if (result.rollNoMismatch) mismatchCount++;
+
+          const lite = {
+            rollNo: result.rollNo, name: result.name, sno: result.sno, roomNo: result.roomNo,
+            status: result.status, portalName: result.portalName || '',
+            rollNoMismatch: result.rollNoMismatch || false,
+            receiptIds: result.receiptIds || '', dates: result.dates || '', amounts: result.amounts || '',
+            error: result.error, index,
+          };
+
+          const jobState = activeJobs.get(`pay_${jobId}`);
+          if (jobState) jobState.results.push(lite);
+          emitToClient('payment:student-done', { jobId, ...lite });
+          await paymentJobQueries.updateProgress.run(index + 1, paidCount, notPaidCount, errorCount, mismatchCount, jobId);
+        },
+
+        onLog: (msg) => {
+          const logEntry = { time: new Date().toISOString(), message: msg };
+          const jobState = activeJobs.get(`pay_${jobId}`);
+          if (jobState) jobState.logs.push(logEntry);
+          emitToClient('payment:log', { jobId, ...logEntry });
+        },
+
+        onComplete: async (summary) => {
+          await paymentJobQueries.complete.run(
+            summary.total, summary.paid, summary.notPaid, summary.errors, summary.mismatches,
+            JSON.stringify(summary.results.map(r => ({
+              sno: r.sno, roomNo: r.roomNo, rollNo: r.rollNo, name: r.name,
+              status: r.status, portalName: r.portalName || '',
+              rollNoMismatch: r.rollNoMismatch || false,
+              receiptIds: r.receiptIds || '', dates: r.dates || '', amounts: r.amounts || '',
+              error: r.error,
+            }))),
+            summary.excelPath || '', summary.elapsed, jobId
+          );
+
+          // ── Auto-update Google Sheet if link provided ──
+          const sheetLink = job.sheet_link || '';
+          let sheetResult = null;
+          if (sheetLink) {
+            emitToClient('payment:log', { jobId, time: new Date().toISOString(), message: '📄 Starting Google Sheets auto-update...' });
+            sheetResult = await updateGoogleSheet(sheetLink, summary.results, (msg) => {
+              emitToClient('payment:log', { jobId, time: new Date().toISOString(), message: msg });
+            }, '', job.target_month, job.target_year);
+          }
+
+          emitToClient('payment:complete', {
+            jobId, total: summary.total, paid: summary.paid, notPaid: summary.notPaid,
+            errors: summary.errors, mismatches: summary.mismatches,
+            elapsed: summary.elapsed,
+            excelFile: summary.excelPath ? path.basename(summary.excelPath) : null,
+            sheetUpdated: sheetResult ? sheetResult.success : false,
+            sheetFilled: sheetResult ? sheetResult.filled || 0 : 0,
+          });
+          activeJobs.delete(`pay_${jobId}`);
+          console.log(`✅ Payment job ${jobId} complete${sheetResult?.success ? ' + Google Sheet updated' : ''}`);
+        },
+      });
+    } catch (err) {
+      console.error(`❌ Payment job ${jobId} failed:`, err);
+      try {
+        const jobState = activeJobs.get(`pay_${jobId}`);
+        const elapsed = jobState ? `${Math.round((Date.now() - jobState.startTime) / 1000)}s` : 'Unknown';
+        await paymentJobQueries.fail.run(elapsed, jobId);
+      } catch (dbErr) { console.error('DB error:', dbErr); }
+      emitToClient('payment:error', { jobId, message: err.message });
+      activeJobs.delete(`pay_${jobId}`);
+    }
+  });
+
+  // ─── Payment job: reconnect ───
+  socket.on('payment:reconnect', (data) => {
+    const { jobId } = data;
+    const jobState = activeJobs.get(`pay_${jobId}`);
+    if (jobState) {
+      socket.join(`user:${jobState.userId}`);
+      socket.emit('payment:reconnect-data', {
+        jobId, running: true, paused: jobState.pauseControl?.paused || false,
+        total: jobState.totalStudents || 0, results: jobState.results, logs: jobState.logs.slice(-100),
+      });
+    } else {
+      socket.emit('payment:reconnect-data', { jobId, running: false });
+    }
+  });
+
+  // ─── Payment job: pause/resume ───
+  socket.on('payment:pause', (data) => {
+    const jobState = activeJobs.get(`pay_${data.jobId}`);
+    if (jobState && jobState.pauseControl) {
+      jobState.pauseControl.paused = true;
+      io.to(`user:${jobState.userId}`).emit('payment:paused', { jobId: data.jobId });
+    }
+  });
+  socket.on('payment:resume', (data) => {
+    const jobState = activeJobs.get(`pay_${data.jobId}`);
+    if (jobState && jobState.pauseControl) {
+      jobState.pauseControl.paused = false;
+      io.to(`user:${jobState.userId}`).emit('payment:resumed', { jobId: data.jobId });
     }
   });
 
