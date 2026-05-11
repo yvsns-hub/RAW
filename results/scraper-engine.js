@@ -410,43 +410,23 @@ async function runScraper(options = {}) {
     onLog('🚀 Production Mode: Launching Puppeteer (pre-installed Chrome)...');
     try {
       const fullPuppeteer = require('puppeteer');
-      const { findChrome } = require('../utils/ensure-chrome');
-      const { execSync } = require('child_process');
+      const { ensureChrome } = require('../utils/ensure-chrome');
 
-      // 1. Use globally cached path from startup
-      // 2. Fallback: scan cache directory
-      // 3. Last resort: install Chrome now
       let executablePath = global.__CHROME_PATH || null;
-      const cacheDir = process.env.PUPPETEER_CACHE_DIR || '/opt/render/project/src/.cache/puppeteer';
-
-      if (!executablePath || !fs.existsSync(executablePath)) {
-        onLog('⚠️ Global Chrome path not set, scanning cache...');
-        executablePath = findChrome(cacheDir);
-      }
-
-      if (!executablePath) {
-        onLog('📦 Chrome not found — installing now (this may take ~30s)...');
+      
+      if (!executablePath || !require('fs').existsSync(executablePath)) {
+        onLog('⚠️ Global Chrome path not set or invalid, ensuring Chrome is installed...');
         try {
-          execSync('npx puppeteer browsers install chrome', {
-            env: { ...process.env, PUPPETEER_CACHE_DIR: cacheDir },
-            stdio: 'pipe',
-            timeout: 120000,
-          });
-          executablePath = findChrome(cacheDir);
-          if (executablePath) {
-            global.__CHROME_PATH = executablePath;
-            onLog(`✅ Chrome installed at: ${executablePath}`);
-          }
+          executablePath = await ensureChrome();
+          global.__CHROME_PATH = executablePath;
+          onLog(`✅ Chrome ready at: ${executablePath}`);
         } catch (installErr) {
-          onLog(`❌ Chrome install failed: ${installErr.message}`);
+          onLog(`❌ Chrome setup failed: ${installErr.message}`);
+          throw new Error('Chrome could not be found or installed. Try redeploying with "Clear build cache & deploy" on Render.');
         }
+      } else {
+        onLog(`📍 Using globally cached Chrome path: ${executablePath}`);
       }
-
-      if (!executablePath) {
-        throw new Error('Chrome could not be found or installed. Try redeploying with "Clear build cache & deploy" on Render.');
-      }
-
-      onLog(`📍 Chrome path: ${executablePath}`);
 
       browser = await fullPuppeteer.launch({
         executablePath,
