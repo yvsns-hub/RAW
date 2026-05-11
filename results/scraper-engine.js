@@ -428,21 +428,12 @@ async function runScraper(options = {}) {
         onLog(`📍 Using globally cached Chrome path: ${executablePath}`);
       }
 
+      const chromium = require('@sparticuz/chromium-min');
       browser = await fullPuppeteer.launch({
         executablePath,
-        args: [
-          '--disable-gpu',
-          '--disable-dev-shm-usage',
-          '--disable-setuid-sandbox',
-          '--no-first-run',
-          '--no-sandbox',
-          '--no-zygote',
-          '--single-process',
-          '--disable-extensions',
-          '--mute-audio',
-        ],
-        defaultViewport: { width: 1024, height: 768 },
-        headless: true,
+        args: chromium.args,
+        defaultViewport: chromium.defaultViewport,
+        headless: chromium.headless,
         ignoreHTTPSErrors: true,
       });
       onLog('✅ Browser launched successfully');
