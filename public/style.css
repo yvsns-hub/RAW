@@ -337,6 +337,11 @@ a:hover {
   background: rgba(255, 255, 255, 0.08);
 }
 
+select.input option {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
 /* Form groups */
 .form-group {
   margin-bottom: 1.2rem;

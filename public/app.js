@@ -1620,7 +1620,8 @@ async function renderMessBillDashboard(app) {
       <div id="gsMsg" class="msg"></div>
       <p style="color:var(--color-muted);font-size:0.88rem;margin-bottom:1rem;">
         Connect a Google Sheet so paid data is <strong>automatically filled</strong> after each job completes.
-        No API keys needed — uses a simple Apps Script deployed from your sheet.
+        No API keys needed — uses a simple Apps Script deployed from your sheet.<br>
+        <strong style="color:var(--color-warning);">⚠️ On Render:</strong> The URL will be lost on restart. Please set the <code>GOOGLE_APPS_SCRIPT_URL</code> environment variable in your Render dashboard for permanent saving!
       </p>
       <div class="form-group">
         <label>Apps Script Web App URL</label>

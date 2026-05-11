@@ -28,6 +28,13 @@ async function ensureChrome() {
   // Chrome not found — install it
   console.log('⚠️ Chrome not found! Installing via Puppeteer...');
   try {
+    // Clear corrupted cache if directory exists but executable is missing
+    const chromeDir = path.join(cacheDir, 'chrome');
+    if (fs.existsSync(chromeDir)) {
+      console.log('🧹 Clearing corrupted Chrome cache...');
+      fs.rmSync(chromeDir, { recursive: true, force: true });
+    }
+
     execSync(`npx puppeteer browsers install chrome`, {
       env: { ...process.env, PUPPETEER_CACHE_DIR: cacheDir },
       stdio: 'inherit',
