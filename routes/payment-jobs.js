@@ -31,28 +31,27 @@ router.get('/', async (req, res) => {
 
 // ─── GOOGLE SHEETS CONFIG (must be before /:id wildcard) ───
 const { getAppsScriptCode } = require('../results/google-sheets');
-const configPath = path.join(__dirname, '..', 'data', 'google-config.json');
+const { settingsQueries } = require('../db/database');
 
-function loadGoogleConfig() {
-  try { return fs.existsSync(configPath) ? JSON.parse(fs.readFileSync(configPath, 'utf8')) : {}; } catch { return {}; }
-}
-function saveGoogleConfig(data) {
-  const dir = path.dirname(configPath);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(configPath, JSON.stringify(data, null, 2));
-}
-
-router.get('/google-config', (req, res) => {
-  const config = loadGoogleConfig();
-  res.json({ appsScriptUrl: config.appsScriptUrl || '' });
+router.get('/google-config', async (req, res) => {
+  try {
+    const row = await settingsQueries.get(`apps_script_url_${req.session.userId}`);
+    res.json({ appsScriptUrl: row ? row.value : '' });
+  } catch (err) {
+    console.error('Get google config error:', err);
+    res.json({ appsScriptUrl: '' });
+  }
 });
 
-router.post('/google-config', (req, res) => {
-  const { appsScriptUrl } = req.body;
-  const config = loadGoogleConfig();
-  config.appsScriptUrl = (appsScriptUrl || '').trim();
-  saveGoogleConfig(config);
-  res.json({ success: true });
+router.post('/google-config', async (req, res) => {
+  try {
+    const { appsScriptUrl } = req.body;
+    await settingsQueries.set.run(`apps_script_url_${req.session.userId}`, (appsScriptUrl || '').trim());
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Save google config error:', err);
+    res.status(500).json({ error: 'Failed to save config.' });
+  }
 });
 
 router.get('/apps-script-code', (req, res) => {

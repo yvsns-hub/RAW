@@ -397,9 +397,19 @@ io.on('connection', (socket) => {
           let sheetResult = null;
           if (sheetLink) {
             emitToClient('payment:log', { jobId, time: new Date().toISOString(), message: '📄 Starting Google Sheets auto-update...' });
+            
+            // Retrieve appsScriptUrl for this user
+            let userScriptUrl = '';
+            try {
+              const settingRow = await settingsQueries.get(`apps_script_url_${userId}`);
+              userScriptUrl = settingRow ? settingRow.value : '';
+            } catch (err) {
+              console.error('Error fetching user script URL:', err);
+            }
+
             sheetResult = await updateGoogleSheet(sheetLink, summary.results, (msg) => {
               emitToClient('payment:log', { jobId, time: new Date().toISOString(), message: msg });
-            }, '', job.target_month, job.target_year);
+            }, userScriptUrl, job.target_month, job.target_year);
           }
 
           emitToClient('payment:complete', {
